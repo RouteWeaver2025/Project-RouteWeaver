@@ -1,4 +1,4 @@
-import './App.css'
+//import './App.css'
 import React from 'react';
 import DataComponent from './components/FetchData';  // Adjust path if needed
 
