@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { fetchData } from '../services/api'; // Adjust path if needed
+import { fetchData } from './services/api'; // Adjust path if needed
 
 const DataComponent = () => {
   useEffect(() => {
