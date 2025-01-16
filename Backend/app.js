@@ -1,17 +1,19 @@
-const express = require('express');
+import express from 'express';
 const app = express();
-const PORT = 5173;
+const PORT = 5000;
+
 
 app.use(express.json());
 
-// Example API endpoint
-app.get('/api', (req, res) => {
-  res.json({ message: 'Hello from the backend!' });
-});
-app.get('/', (req, res) => {
-  res.json({ message: 'This is the main window' });
-});
-// Start the backend server
+app
+  .route('/api/login')
+  .get((req, res) => {
+    return res.json({ message: 'status pending' });
+  })
+  .post((req, res) => {
+    const {username, email, password} = req.body;
+    console.log(username, email, password);
+  })
 app.listen(PORT, () => {
   console.log(`Backend server running on http://localhost:${PORT}`);
 });
