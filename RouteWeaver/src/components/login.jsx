@@ -30,10 +30,11 @@ const LoginPage = () => {
 
   // Handle Signup Submit
   const handleSignupSubmit = async (e) => {
-    e.preventDefault();
+    //e.preventDefault();
     try {
       const response = await axios.post("http://localhost:5000/api/login", signupData);
       console.log("Signup Response:", response.data);
+      
     } catch (error) {
       console.error("Signup Error:", error.message);
     }
@@ -84,7 +85,7 @@ const LoginPage = () => {
             onChange={handleSignupChange}
             required
           />
-          <button type="submit">Sign up</button>
+          <button type="submit" onClick={handleSignupSubmit}>Sign up</button>
         </form>
       </div>
 

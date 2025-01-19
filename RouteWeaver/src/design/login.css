@@ -6,7 +6,7 @@ body{
 	align-items: center;
 	min-height: 100vh;
 	font-family: 'Jost', sans-serif;
-	background: linear-gradient(to bottom, #0f0c29, #302b63, #24243e);
+	background-image: linear-gradient(to right top, #f0f1f4, #d8ecff, #b0ebff, #77ebff, #09ebf6);
 }
 .main{
 	width: 350px;
@@ -24,6 +24,7 @@ body{
 	position: relative;
 	width:100%;
 	height: 100%;
+	background-color: #5786cf;
 }
 label{
 	color: #fff;
@@ -69,7 +70,8 @@ button:hover{
 }
 .login{
 	height: 460px;
-	background: #eee;
+	background-color: #dddbd8;
+	/*background: #eee;*/
 	border-radius: 60% / 10%;
 	transform: translateY(-180px);
 	transition: .8s ease-in-out;
