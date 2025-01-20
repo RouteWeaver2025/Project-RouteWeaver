@@ -32,7 +32,7 @@ const LoginPage = () => {
   const handleSignupSubmit = async (e) => {
     //e.preventDefault();
     try {
-      const response = await axios.post("http://localhost:5000/api/login", signupData);
+      const response = await axios.post("http://localhost:5000/user/signup", signupData);
       console.log("Signup Response:", response.data);
       
     } catch (error) {
@@ -44,7 +44,7 @@ const LoginPage = () => {
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post("http://localhost:3000/api/login", loginData);
+      const response = await axios.post("http://localhost:5000/user/login", loginData);
       console.log("Login Response:", response.data);
     } catch (error) {
       console.error("Login Error:", error.message);
