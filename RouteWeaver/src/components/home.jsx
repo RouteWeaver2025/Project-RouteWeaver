@@ -12,14 +12,21 @@ const HomePage = () => {
 
   return (
     <div className="main1">
+      <div className="homeTop">
+        <div class="menuicon">
+          <div class="bar1"></div>
+          <div class="bar2"></div>
+          <div class="bar3"></div>
+        </div>
+      </div>
       <div className="greeting">
         <h3 >Hello {name}</h3> {/* Display the email here */}
       </div>
       <div className="box">
-        <div className="NewR"></div>
-        <div className="SavedR"></div>
+        <div role="button" className="NewR"></div>
+        <div role="button" className="SavedR"></div>
       </div>
-      <div className="SmartV">
+      <div role="button" className="SmartV">
         <h4>hello</h4>
       </div>
     </div>
