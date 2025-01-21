@@ -7,8 +7,12 @@ body{
 	min-height: 100vh;
 	/* font-family: 'Jost', sans-serif; */
 	/* background-image: linear-gradient(to right top, #020202, #ffffff, #79787a, #f5f5f5,#050506); */
-	background: linear-gradient(2deg, #5d1fba, #0bb359);
-    font-family: 'Roboto', sans-serif;
+	/* background: linear-gradient(2deg, #5d1fba, #0bb359);
+    font-family: 'Roboto', sans-serif; */
+    background-image: url('homeimg.jpg'); /* Path to your image */
+    background-size: cover; /* Ensures the image covers the entire area */
+    background-repeat: no-repeat; /* Prevents the image from repeating */
+    background-position: center; /* Centers the image */
 }
 .main1{
         width: 350px;
