@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import bcrypt from "bcryptjs";
+import { useNavigate } from "react-router-dom";
 import "../design/login.css" // Your CSS file
 
 const LoginPage = () => {
@@ -52,6 +53,10 @@ const LoginPage = () => {
     try {
       const response = await axios.post("http://localhost:5000/user/login", loginData);
       console.log("Login Response:", response.data);
+      if (response.data.message === "Login Successful") {
+        // <-- Updated: Passing email as state to home page
+        navigate("/home.jsx", { state: { email: loginData.email } }); // <-- Pass the email here
+      }
     } catch (error) {
       console.error("Login Error:", error.message);
     }
@@ -124,3 +129,5 @@ const LoginPage = () => {
   );
 };
 export default LoginPage;
+
+
