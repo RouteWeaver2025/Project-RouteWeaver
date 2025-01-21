@@ -1,7 +1,11 @@
 import React, { useState } from "react";
 import axios from "axios";
 import bcrypt from "bcryptjs";
+<<<<<<< HEAD
 import { useNavigate } from "react-router-dom";
+=======
+import validator from "validator";
+>>>>>>> 3172719ab66774b4e4d327e34161e6304bc1b4aa
 import "../design/login.css" // Your CSS file
 
 const LoginPage = () => {
@@ -33,20 +37,25 @@ const LoginPage = () => {
   // Handle Signup Submit
   const handleSignupSubmit = async (e) => {
     //e.preventDefault();
+    if (!validator.isEmail(signupData.email)) {
+      alert("Invalid email address! Please enter a valid email."); // Set the error message
+      return; // Stop form submission
+    }
     try {
-      const salt= await brcrypt.genSalt(11);
-      signupData.password= await brcrypt.hash(signupData.password, salt);
+      const salt = await bcrypt.genSalt(11);
+      signupData.password = await bcrypt.hash(signupData.password, salt);
       const response = await axios.post("http://localhost:5000/user/signup", signupData);
-      if(response.data.message==="User Added!"){
+      if (response.data.message === "User Added!") {
         windows.location.href = "/home";
       }
       console.log("Signup Response:", response.data);
-      
-    } catch (error) {
-      console.error("Signup Error:", error.message);
     }
-  };
+   catch (error) {
+    console.error("Signup Error:", error.message);
+  }
+};
 
+<<<<<<< HEAD
   // Handle Login Submit
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
@@ -61,72 +70,86 @@ const LoginPage = () => {
       console.error("Login Error:", error.message);
     }
   };
+=======
+// Handle Login Submit
+const handleLoginSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    const salt = await bcrypt.genSalt(11);
+    loginData.password = await bcrypt.hash(loginData.password, salt);
+    const response = await axios.post("http://localhost:5000/user/login", loginData);
+    console.log("Login Response:", response.data);
+  } catch (error) {
+    console.error("Login Error:", error.message);
+  }
+};
+>>>>>>> 3172719ab66774b4e4d327e34161e6304bc1b4aa
 
-  return (
-    <div className="main">
-      <input type="checkbox" id="chk" aria-hidden="true" />
+return (
+  <div className="main">
+    <input type="checkbox" id="chk" aria-hidden="true" />
 
-      {/* Signup Form */}
-      <div className="signup">
-        <form onSubmit={handleSignupSubmit}>
-          <label htmlFor="chk" aria-hidden="true">
-            Sign up
-          </label>
-          <input
-            type="text"
-            name="username"
-            placeholder="User name"
-            value={signupData.username}
-            onChange={handleSignupChange}
-            required
-          />
-          <input
-            type="email"
-            name="email"
-            placeholder="Email"
-            value={signupData.email}
-            onChange={handleSignupChange}
-            required
-          />
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={signupData.password}
-            onChange={handleSignupChange}
-            required
-          />
-          <button type="submit" onClick={handleSignupSubmit}>Sign up</button>
-        </form>
-      </div>
-
-      {/* Login Form */}
-      <div className="login">
-        <form onSubmit={handleLoginSubmit}>
-          <label htmlFor="chk" aria-hidden="true">
-            Login
-          </label>
-          <input
-            type="email"
-            name="email"
-            placeholder="Email"
-            value={loginData.email}
-            onChange={handleLoginChange}
-            required
-          />
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={loginData.password}
-            onChange={handleLoginChange}
-            required
-          />
-          <button type="submit">Login</button>
-        </form>
-      </div>
+    {/* Signup Form */}
+    <div className="signup">
+      <form onSubmit={handleSignupSubmit}>
+        <label htmlFor="chk" aria-hidden="true">
+          Sign up
+        </label>
+        <input
+          type="text"
+          name="username"
+          placeholder="User name"
+          value={signupData.username}
+          onChange={handleSignupChange}
+          required
+        />
+        <input
+          type="email"
+          name="email"
+          placeholder="Email"
+          value={signupData.email}
+          onChange={handleSignupChange}
+          required
+        />
+        <input
+          type="password"
+          name="password"
+          placeholder="Password"
+          value={signupData.password}
+          onChange={handleSignupChange}
+          required
+        />
+        <button type="submit" onClick={handleSignupSubmit}>Sign up</button>
+      </form>
     </div>
-  );
+
+    {/* Login Form */}
+    <div className="login">
+      <form onSubmit={handleLoginSubmit}>
+        <label htmlFor="chk" aria-hidden="true">
+          Login
+        </label>
+        <input
+          type="email"
+          name="email"
+          placeholder="Email"
+          value={loginData.email}
+          onChange={handleLoginChange}
+          required
+        />
+        <input
+          type="password"
+          name="password"
+          placeholder="Password"
+          value={loginData.password}
+          onChange={handleLoginChange}
+          required
+        />
+        <button type="submit">Login</button>
+      </form>
+    </div>
+  </div>
+);
 };
 export default LoginPage;
 
