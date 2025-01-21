@@ -19,7 +19,9 @@ const HomePage = () => {
         <div className="NewR"></div>
         <div className="SavedR"></div>
       </div>
-      <div className="SmartV"></div>
+      <div className="SmartV">
+        <h4>hello</h4>
+      </div>
     </div>
   );
 };

@@ -7,19 +7,86 @@ body{
 	min-height: 100vh;
 	/* font-family: 'Jost', sans-serif; */
 	/* background-image: linear-gradient(to right top, #020202, #ffffff, #79787a, #f5f5f5,#050506); */
+<<<<<<< Updated upstream
 	/* background: linear-gradient(2deg, #5d1fba, #0bb359);
     font-family: 'Roboto', sans-serif; */
     background-image: url('homeimg.jpg'); /* Path to your image */
     background-size: cover; /* Ensures the image covers the entire area */
     background-repeat: no-repeat; /* Prevents the image from repeating */
     background-position: center; /* Centers the image */
+=======
+	background:black;
+    font-family: 'Roboto', sans-serif;
+>>>>>>> Stashed changes
 }
 .main1{
-        width: 350px;
-        height: 500px;
+        width: 100vw;
+        height: 100vh;
         background: rgba(216, 197, 197, 0.475);
         overflow: hidden;
         border-radius: 10px;
-        background: linear-gradient(2deg, #212121, #c5a3a3);
+        background: black;
         box-shadow: 5px 20px 50px #000000;
+        display: flex;
+        flex-direction:column;
+        justify-content:center;
+        gap:20px;
+        place-items: center;
+        
+}
+.greeting{
+    width: 100vw;
+    height: fit-content;
+    background: rgba(216, 197, 197, 0.475);
+    overflow: hidden;
+    border-radius: 10px;
+    background: black;
+    box-shadow: 5px 20px 50px #000000;
+    font-size: x-large;
+    text-align: center;
+    color: white;
+}
+.box{
+    width: 100vw;
+    height: fit-content;
+    overflow: hidden;
+    border-radius: 10px;
+    background: black;
+    box-shadow: 5px 20px 50px #000000;
+    padding:30px;
+    display: flex;
+    flex-direction:row;
+    justify-content:center;
+    gap:20px;
+    box-sizing: border-box;
+}
+.NewR{
+    width: 300px;
+    height: 300px;
+    background: rgba(216, 197, 197, 0.475);
+    overflow: hidden;
+    border-radius: 10px;
+    background: linear-gradient(2deg, #212121, #262424);
+    box-shadow: 5px 20px 50px #000000;
+    margin-right: 40px;
+}
+.SavedR{
+    width: 300px;
+    height: 300px;
+    background: rgba(216, 197, 197, 0.475);
+    overflow: hidden;
+    border-radius: 10px;
+    background: linear-gradient(2deg, #212121, #262424);
+    box-shadow: 5px 20px 50px #000000;
+}
+.SmartV{
+    width: 600px;
+    height: 300px;
+    margin: 30px;
+    overflow: hidden;
+    border-radius: 10px;
+    background: linear-gradient(2deg, #212121, #262424) ;
+    box-shadow: 5px 20px 50px #000000;
+    padding:30px;
+
 }
