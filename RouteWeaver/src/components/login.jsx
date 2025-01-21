@@ -1,11 +1,8 @@
 import React, { useState } from "react";
 import axios from "axios";
 import bcrypt from "bcryptjs";
-<<<<<<< HEAD
 import { useNavigate } from "react-router-dom";
-=======
 import validator from "validator";
->>>>>>> 3172719ab66774b4e4d327e34161e6304bc1b4aa
 import "../design/login.css" // Your CSS file
 
 const LoginPage = () => {
@@ -55,11 +52,12 @@ const LoginPage = () => {
   }
 };
 
-<<<<<<< HEAD
   // Handle Login Submit
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     try {
+      const salt = await bcrypt.genSalt(11);
+      loginData.password = await bcrypt.hash(loginData.password, salt);
       const response = await axios.post("http://localhost:5000/user/login", loginData);
       console.log("Login Response:", response.data);
       if (response.data.message === "Login Successful") {
@@ -70,20 +68,7 @@ const LoginPage = () => {
       console.error("Login Error:", error.message);
     }
   };
-=======
-// Handle Login Submit
-const handleLoginSubmit = async (e) => {
-  e.preventDefault();
-  try {
-    const salt = await bcrypt.genSalt(11);
-    loginData.password = await bcrypt.hash(loginData.password, salt);
-    const response = await axios.post("http://localhost:5000/user/login", loginData);
-    console.log("Login Response:", response.data);
-  } catch (error) {
-    console.error("Login Error:", error.message);
-  }
-};
->>>>>>> 3172719ab66774b4e4d327e34161e6304bc1b4aa
+
 
 return (
   <div className="main">
