@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { useNavigate } from "react-router-dom";
 import validator from "validator";
 import "../design/login.css" // Your CSS file
+import HomePage from "./home";
 
 const LoginPage = () => {
   // State for Signup Form
@@ -43,7 +44,7 @@ const LoginPage = () => {
       signupData.password = await bcrypt.hash(signupData.password, salt);
       const response = await axios.post("http://localhost:5000/user/signup", signupData);
       if (response.data.message === "User Added!") {
-        windows.location.href = "/home";
+        HomePage(signupData.email);
       }
       console.log("Signup Response:", response.data);
     }
@@ -61,8 +62,9 @@ const LoginPage = () => {
       const response = await axios.post("http://localhost:5000/user/login", loginData);
       console.log("Login Response:", response.data);
       if (response.data.message === "Login Successful") {
+        Homepage(loginData.email);
         // <-- Updated: Passing email as state to home page
-        navigate("/home.jsx", { state: { email: loginData.email } }); // <-- Pass the email here
+        // navigate("/home.jsx", { state: { email: loginData.email } }); // <-- Pass the email here
       }
     } catch (error) {
       console.error("Login Error:", error.message);

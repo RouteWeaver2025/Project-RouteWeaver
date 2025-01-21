@@ -1,4 +1,21 @@
-#main{
-    background-color: bisque;
-    font-family: Arial, Helvetica, sans-serif;
+body{
+    margin: 0;
+	padding: 0;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	min-height: 100vh;
+	/* font-family: 'Jost', sans-serif; */
+	/* background-image: linear-gradient(to right top, #020202, #ffffff, #79787a, #f5f5f5,#050506); */
+	background: linear-gradient(2deg, #5d1fba, #0bb359);
+    font-family: 'Roboto', sans-serif;
+}
+.main1{
+        width: 350px;
+        height: 500px;
+        background: rgba(216, 197, 197, 0.475);
+        overflow: hidden;
+        border-radius: 10px;
+        background: linear-gradient(2deg, #212121, #c5a3a3);
+        box-shadow: 5px 20px 50px #000000;
 }
