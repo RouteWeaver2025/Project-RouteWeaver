@@ -1,4 +1,4 @@
-import {User} from "../models/user.js";
+import {User} from "../../models/user.js";
 
 
 async function findUserByEmail(req, res){ //checks email then password

@@ -1,12 +1,12 @@
 # Web Development Project
 
 ## Overview
-A web app with a **React.js** frontend and **Node.js/Express.js** backend. Organized into `/frontend` and `/backend` directories.
+A web app with a **React.js** frontend and **Node.js/Express.js** backend. Organized into `/routeweaver` and `/backend` directories.
 
 ## Technologies
 - **Frontend**: React.js 
 - **Backend**: Node.js, Express.js
-- **Others**: Axios, Nodemon
+- **Others**: Axios, Nodemon,Validator,Mongoose
 
 ## Setup
 
@@ -16,7 +16,6 @@ A web app with a **React.js** frontend and **Node.js/Express.js** backend. Organ
 ### Installation
 Clone the repo and install dependencies:
 ```bash
-git clone https://github.com/yourusername/your-repository.git
 cd frontend && npm install
 cd backend && npm install
 

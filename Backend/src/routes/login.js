@@ -1,6 +1,6 @@
 import express from "express";
-import { mongoconnect } from "../services/connection.js";
-import {findUserByEmail, addUser} from "../services/fetchdata.js";
+import { mongoconnect } from "../utils/connection.js";
+import {findUserByEmail, addUser} from "../utils/fetchdata.js";
 
 const router=express.Router();
 const app=express();
