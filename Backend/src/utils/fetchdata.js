@@ -16,7 +16,7 @@ async function findUserByEmail(req, res){ //checks email then password
     }
 }
 
-async function addUser(req, res) {
+async function addUser(req, res) { //for signup, checks if email already exists
     try{
         const user=req.body;
         if(await User.findOne({email: user.email})){
@@ -33,7 +33,12 @@ async function addUser(req, res) {
     }
 }
 async function deleteUser(email) {
-    
+    res.json({ message: "Status Pending" });
 }
-
-export {findUserByEmail, addUser, deleteUser};
+async function fetchSavedRoutes(req, res) {
+    res.json({ message: "Status Pending" });
+}
+async function addRoutes(req,res){
+    const user= await Routes.findOne(req.params.Userid);
+}
+export {findUserByEmail, addUser, deleteUser,fetchSavedRoutes,addRoutes};
