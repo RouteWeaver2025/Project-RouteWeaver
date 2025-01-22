@@ -1,9 +1,9 @@
-/* Body Styles */
 body {
     margin: 0;
     padding: 0;
     display: flex;
     max-width: 100vw;
+    max-height: fit-content;
     justify-content: center;
     background-image: url('homeimg.jpg'); /* Path to your image */
     background-size: cover; /* Ensures the image covers the entire area */
@@ -15,7 +15,7 @@ body {
 /* Main Wrapper */
 .main1 {
     max-width: 100vw;
-    min-height: 100vh;
+    max-height: fit-content;
     background: rgba(0, 0, 0, 0.5); /* Light transparent overlay */
     overflow: hidden;
     display: flex;
@@ -74,8 +74,8 @@ body {
     color: white;
     display: flex;
     flex-direction: column;
-    justify-content: space-between; /* Push Logout to bottom */
-    padding-top: 20px;
+    justify-content: flex-start;
+    padding-top:0%;
 }
 
 .menu.open {
@@ -93,18 +93,25 @@ body {
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     cursor: pointer;
     font-size: 0.9rem; /* Reduced font size */
+    transition: background 0.3s, color 0.3s;
 }
 
 .menu-item:hover {
     background: rgba(13, 64, 101, 0.6);
+    color: #ffffff;
 }
 
 .menu-item.logout {
-    margin-top: auto;
-    text-align: center;
+    margin-top: 0%;
+    text-align:center;
     padding: 15px;
     cursor: pointer;
     font-size: 0.9rem; /* Reduced font size for logout */
+    transition: background 0.3s, color 0.3s;
+}
+
+.menu-item.logout:hover {
+    background: rgba(255, 0, 0, 0.7); /* Red hover effect for logout */
 }
 
 /* Main Greeting */
@@ -122,86 +129,88 @@ body {
 /* Box for Buttons */
 .box {
     margin: 10px;
+    margin-bottom: 0%;
     width: 100vw;
     min-height: fit-content;
     overflow: hidden;
     border-radius: 10px;
     background: rgba(0, 0, 0, 0); /* Transparent */
-    padding: 30px;
+    padding: 20px; /* Reduced padding */
     display: flex;
     flex-direction: row;
     justify-content: left;
-    gap: 20px;
+    gap: 15px; /* Reduced gap */
     box-sizing: border-box;
+    transform: scale(0.67); /* Scale down to 67% */
+    transform-origin: left; /* Start scaling from the left side */
 }
 
 .NewR, .SavedR {
-    width: 220px;
-    height: 220px;
+    color: white;
+    margin-left: 30px;
+    padding-top: 20px;
+    text-align: center;
+    width: 200px; /* 67% of the original 220px */
+    height: 147px; /* 67% of the original 220px */
     overflow: hidden;
     border-radius: 10px;
     background: rgba(55, 49, 49, 0.5); /* Light transparent gray */
+    transition: transform 0.3s, background 0.3s;
 }
 
-.NewR:hover, .SavedR:hover , .SmartV:hover{
-    background: rgba(13, 64, 101, 0.6); /* Hover effect with transparency */
+.NewR:hover, .SavedR:hover {
+    background: rgba(33, 33, 33, 0.7); /* Darker hover background */
+    transform: scale(1.1); /* Slight zoom effect on hover */
+    cursor: pointer;
+}
+
+.SmartV:hover {
+    background: rgba(33, 33, 33, 0.7); /* Darker hover background */
+    transform: scale(0.7); /* Slight zoom effect on hover */
     cursor: pointer;
 }
 
 /* SmartV Section */
 .SmartV {
-    width: 900px; /* Reduced width */
-    height: fit-content;
-    margin-left: 40px;
+    width: 800px; /* Increased width for better visibility */
+    
+    min-height: fit-content;
+    margin-left: 100px; /* Adjust margin */
     overflow: hidden;
     border-radius: 10px;
-    background: rgba(55, 49, 49, 0.5);
+    background: rgba(55, 49, 49, 0.5) ; 
     display: flex;
-    flex-direction: row;
+    flex-direction: row; /* Ensures left and right sections are side-by-side */
     color: white;
     position: relative;
-}
-
-.SmartV .left-section, .SmartV .right-section {
-    height: 100%;
-    padding: 20px;
-    background: rgba(0, 0, 0, 0); /* Transparent background */
+    transform: scale(0.67); /* Scale down the entire component */
+    transform-origin: top left; /* Ensure scaling aligns to the top-left */
 }
 
 .SmartV .left-section {
-    width: calc(50% - 1px);
+    width: 50%; /* Take up half the width */
     display: flex;
     justify-content: center;
     align-items: center;
+    border-right: 2px solid white; /* Add border line between left and right sections */
 }
 
 .SmartV .right-section {
     width: 50%;
     display: flex;
-    justify-content: center;
-    align-items: center;
+    flex-direction: column;
+    justify-content:center;
+    align-items:start;
 }
 
-.SmartV::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 50%;
-    width: 2px;
-    background: rgba(255, 255, 255, 0.8); /* Semi-transparent white border */
-    transform: translateX(-50%);
-}
-
-/* Calendar Styles */
+/* Calendar Styles - Filling the Left Section */
 .calendar {
-    width: 100%;
-    height: 100%;
-    padding: 20px;
+    width: 100%; /* Fill the left section's width */
+    height: 100%; /* Fill the left section's height */
+    padding: 10px; /* Adjust padding for spacing */
     background: rgba(0, 0, 0, 0.5); /* Transparent black */
     color: white;
     border-radius: 10px;
-    text-align: center;
 }
 
 /* Calendar Header */
@@ -209,24 +218,27 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
+    margin-bottom: 7px; /* Reduced margin */
 }
 
 .calendar-month {
-    font-size: 1.5rem;
+    padding: 15px;
+    font-size: 1rem; /* Reduced font size */
 }
 
 .calendar-button {
     background: rgba(33, 33, 33, 0.5); /* Transparent background for button */
     color: white;
     border: none;
-    padding: 5px 10px;
+    padding: 3px 6px; /* Reduced padding */
     border-radius: 5px;
     cursor: pointer;
+    transition: background 0.3s, transform 0.3s;
 }
 
 .calendar-button:hover {
     background: rgba(13, 64, 101, 0.6);
+    transform: scale(1.1); /* Slight zoom effect */
 }
 
 /* Calendar Body and Cells */
@@ -242,13 +254,19 @@ body {
 }
 
 .calendar-cell {
-    width: 14.2%; /* Divides evenly into 7 days */
-    height: 50px;
+    width: 14%; /* Adjusted to fill row evenly */
+    height: 40px; /* Adjusted height */
     display: flex;
     align-items: center;
     justify-content: center;
     border: 1px solid rgba(255, 255, 255, 0.2);
     background: rgba(0, 0, 0, 0); /* Fully transparent */
+    transition: background 0.3s, transform 0.3s;
+}
+
+.calendar-cell:hover {
+    background: rgba(255, 255, 255, 0.2); /* Light hover background */
+    transform: scale(1.1); /* Slight zoom effect */
 }
 
 .calendar-cell.header {
@@ -258,4 +276,17 @@ body {
 
 .calendar-cell.empty {
     background: transparent;
+}
+
+.suggestedroute1, .suggestedroute2, .suggestedroute3{
+    background:  rgba(55, 49, 49, 0.5);
+    width:95%;
+    height:100px;
+    margin: 10px;
+    border-radius: 50px;
+}
+
+.suggestedroute1:hover, .suggestedroute2:hover, .suggestedroute3:hover{
+    background: rgba(33, 33, 33, 0.7); /* Darker hover background */
+    cursor: pointer;
 }

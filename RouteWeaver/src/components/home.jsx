@@ -19,9 +19,9 @@ const HomePage = () => {
     setCurrentDate(newDate);
   };
 
-  // Function to get the month name
+  // Function to get the month name (excluding year)
   const getMonthName = (date) =>
-    date.toLocaleString("default", { month: "long", year: "numeric" });
+    date.toLocaleString("default", { month: "long" });
 
   // Function to generate the calendar
   const generateCalendar = () => {
@@ -37,7 +37,9 @@ const HomePage = () => {
       const week = [];
       for (let j = 0; j < 7; j++) {
         if ((i === 0 && j < firstDay) || day > daysInMonth) {
-          week.push(<div key={`${i}-${j}`} className="calendar-cell empty"></div>);
+          week.push(
+            <div key={`${i}-${j}`} className="calendar-cell empty"></div>
+          );
         } else {
           week.push(
             <div key={`${i}-${j}`} className="calendar-cell">
@@ -101,11 +103,11 @@ const HomePage = () => {
           <div className="bar2"></div>
           <div className="bar3"></div>
         </div>
-        <div className="menu-content">
-          {/* Add your menu items here */}
-        </div>
+        {/*<div className="menu-content">
+          { Add your menu items here }
+        </div>*/}
         <div className="menu-item logout" onClick={() => alert("Logged out")}>
-          Logout
+          <h3>Logout</h3>
         </div>
       </div>
 
@@ -113,38 +115,56 @@ const HomePage = () => {
       <div className="greeting">
         <h3>{greet} Ryan</h3>
       </div>
-
+      
+      {/*buttons: new route, saved route,smartvacay*/}
       <div className="box">
-        <div role="button" className="NewR"></div>
-        <div role="button" className="SavedR"></div>
+        <div role="button" className="NewR">
+          <h4>New Route</h4>
+        </div>
+        <div role="button" className="SavedR">
+          <h4>Saved Route</h4>
+        </div>
       </div>
 
       <div className="SmartV">
-        <div className="left-section">
-          <div className="calendar">
+        <div className="left-section">{/*left section*/}
+          <div className="calendar">{/* Calendar component */}
             <div className="calendar-header">
-              <button className="calendar-button" onClick={() => handleMonthChange(-1)}>
+              <button
+                className="calendar-button"
+                onClick={() => handleMonthChange(-1)}
+              >
                 &lt;
               </button>
               <h3 className="calendar-month">{getMonthName(currentDate)}</h3>
-              <button className="calendar-button" onClick={() => handleMonthChange(1)}>
+              <button
+                className="calendar-button"
+                onClick={() => handleMonthChange(1)}
+              >
                 &gt;
               </button>
             </div>
             <div className="calendar-body">
               <div className="calendar-row">
-                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                  <div key={day} className="calendar-cell header">
-                    {day}
-                  </div>
-                ))}
+                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                  (day) => (
+                    <div key={day} className="calendar-cell header">
+                      {day}
+                    </div>
+                  )
+                )}
               </div>
               {generateCalendar()}
             </div>
           </div>
         </div>
         <div className="right-section">
-          <p>Additional Content Here</p>
+          {/*<div role="button" className="suggestedroute1"></div>
+          <div role="button" className="suggestedroute2"></div>
+          <div role="button" className="suggestedroute3"></div>*/}
+          <button className="suggestedroute1">one</button>{/*suggested routes from current location*/}
+          <button className="suggestedroute2">two</button>
+          <button className="suggestedroute3">three</button>
         </div>
       </div>
     </div>
