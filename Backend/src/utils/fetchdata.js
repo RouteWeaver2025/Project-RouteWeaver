@@ -1,6 +1,6 @@
 import {User} from "../models/user.js";
-
-
+import {Route} from "../models/routes.js";
+import {Route} from "../models/routes.js";
 async function findUserByEmail(req, res){ //checks email then password
     try {
         const user = await User.findOne(req.params.email); 
@@ -29,16 +29,27 @@ async function addUser(req, res) { //for signup, checks if email already exists
         }
     }
     catch(error){
-        return res.status(500).json({ message: "Server error", error });
+        return res.status(500).json({ message: "Server error"});
     }
 }
 async function deleteUser(email) {
     res.json({ message: "Status Pending" });
 }
-async function fetchSavedRoutes(req, res) {
-    res.json({ message: "Status Pending" });
+async function fetchSavedRoutes(req, res) {   
+    try{ //send the user email as parameter
+        const response=await Route.findOne({person: req.params.user}); 
+        if(!response || !response.routes){ //checks if user added any routes before
+            return res.status(404).json({ message: "No routes found" });
+            // return res.json(response);
+        }
+        return res.json(response);//sends the array of routes
+    }
+    catch{
+        res.status(500).json({ message: "Server error" });
+    }
 }
+    
 async function addRoutes(req,res){
-    const user= await Routes.findOne(req.params.Userid);
+    res.json({status: "Under development"})
 }
 export {findUserByEmail, addUser, deleteUser,fetchSavedRoutes,addRoutes};
