@@ -1,14 +1,6 @@
 import {User} from "../models/user.js";
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-
-=======
 import {Route} from "../models/routes.js";
->>>>>>> Stashed changes
-=======
 import {Route} from "../models/routes.js";
->>>>>>> Stashed changes
-
 async function findUserByEmail(req, res){ //checks email then password
     try {
         const user = await User.findOne(req.params.email); 
