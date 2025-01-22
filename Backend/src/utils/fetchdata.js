@@ -1,6 +1,10 @@
 import {User} from "../models/user.js";
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
+=======
+import {Route} from "../models/routes.js";
+>>>>>>> Stashed changes
 =======
 import {Route} from "../models/routes.js";
 >>>>>>> Stashed changes
