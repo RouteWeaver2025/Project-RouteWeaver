@@ -1,9 +1,10 @@
 body {
-    margin: 0;
+    margin: 0px;
     padding: 0;
     display: flex;
+    width: auto;
     max-width: 100vw;
-    max-height: fit-content;
+    min-height:fit-content ;
     justify-content: center;
     background-image: url('homeimg.jpg'); /* Path to your image */
     background-size: cover; /* Ensures the image covers the entire area */
@@ -14,19 +15,24 @@ body {
 
 /* Main Wrapper */
 .main1 {
+    width: auto;
     max-width: 100vw;
-    max-height: fit-content;
+    height: 100vh;
+    padding-left: 20px;
     background: rgba(0, 0, 0, 0.5); /* Light transparent overlay */
     overflow: hidden;
-    display: flex;
+    display:flex;
     flex-direction: column;
     justify-content: left;
     gap: 20px;
+    margin-bottom: 10px;
+    padding-left: 30px;
+    
 }
-
 /* Top Bar with Menu Icon */
 .homeTop {
-    width: 100vw;
+    width: auto;
+    max-width: 100vw;
     min-height: 40px;
     background: rgba(0, 0, 0, 0); /* Transparent */
     overflow: hidden;
@@ -35,7 +41,7 @@ body {
 .menuicon {
     display: inline-block;
     cursor: pointer;
-    margin-left: 25px;
+    /*margin-left: 25px;*/
     margin-top: 5px;
 }
 
@@ -64,7 +70,7 @@ body {
     position: fixed; /* Keeps the menu visible when scrolling */
     top: 0;
     left: 0;
-    width: 150px; /* Reduced width */
+    width: 150px; 
     height: 100vh; /* Full viewport height */
     background-color: black;
     box-shadow: 2px 5px 15px rgba(0, 0, 0, 0.5);
@@ -75,7 +81,6 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    padding-top:0%;
 }
 
 .menu.open {
@@ -128,30 +133,42 @@ body {
 
 /* Box for Buttons */
 .box {
-    margin: 10px;
-    margin-bottom: 0%;
-    width: 100vw;
+    /*margin: 10px;*/
+    margin-left: 0px;
+    margin-bottom: 10px;
+    width: auto;
+    max-width: 100vw;
     min-height: fit-content;
+    height: auto;
     overflow: hidden;
     border-radius: 10px;
+    position:relative;
     background: rgba(0, 0, 0, 0); /* Transparent */
     padding: 20px; /* Reduced padding */
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     justify-content: left;
     gap: 15px; /* Reduced gap */
     box-sizing: border-box;
     transform: scale(0.67); /* Scale down to 67% */
     transform-origin: left; /* Start scaling from the left side */
+    ;
 }
-
+.selectroutebox{
+    width:auto;
+    display: flex;
+    flex-direction: row;
+}
 .NewR, .SavedR {
     color: white;
-    margin-left: 30px;
-    padding-top: 20px;
+    font-size: large;
+    margin: 20px;
+    /*margin-bottom: 30px;*/
+    padding: 20px;
     text-align: center;
-    width: 200px; /* 67% of the original 220px */
-    height: 147px; /* 67% of the original 220px */
+    width: auto; 
+    min-width: 30%;
+    height: 147px; 
     overflow: hidden;
     border-radius: 10px;
     background: rgba(55, 49, 49, 0.5); /* Light transparent gray */
@@ -166,16 +183,17 @@ body {
 
 .SmartV:hover {
     background: rgba(33, 33, 33, 0.7); /* Darker hover background */
-    transform: scale(0.7); /* Slight zoom effect on hover */
+    /*transform: scale(0.7); /* Slight zoom effect on hover */
     cursor: pointer;
 }
 
 /* SmartV Section */
 .SmartV {
-    width: 800px; /* Increased width for better visibility */
-    
-    min-height: fit-content;
-    margin-left: 100px; /* Adjust margin */
+    width: auto; 
+    min-width: 500px;
+    height: auto;
+    margin: 20px;
+    margin-right: 0px;
     overflow: hidden;
     border-radius: 10px;
     background: rgba(55, 49, 49, 0.5) ; 

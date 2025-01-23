@@ -118,53 +118,54 @@ const HomePage = () => {
       
       {/*buttons: new route, saved route,smartvacay*/}
       <div className="box">
+        <div className="selectroutebox">
         <div role="button" className="NewR">
           <h4>New Route</h4>
         </div>
         <div role="button" className="SavedR">
           <h4>Saved Route</h4>
         </div>
-      </div>
-
-      <div className="SmartV">
-        <div className="left-section">{/*left section*/}
-          <div className="calendar">{/* Calendar component */}
-            <div className="calendar-header">
-              <button
-                className="calendar-button"
-                onClick={() => handleMonthChange(-1)}
-              >
-                &lt;
-              </button>
-              <h3 className="calendar-month">{getMonthName(currentDate)}</h3>
-              <button
-                className="calendar-button"
-                onClick={() => handleMonthChange(1)}
-              >
-                &gt;
-              </button>
-            </div>
-            <div className="calendar-body">
-              <div className="calendar-row">
-                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                  (day) => (
-                    <div key={day} className="calendar-cell header">
-                      {day}
-                    </div>
-                  )
-                )}
+        </div>
+        <div className="SmartV">
+          <div className="left-section">{/*left section*/}
+            <div className="calendar">{/* Calendar component */}
+              <div className="calendar-header">
+                <button
+                  className="calendar-button"
+                  onClick={() => handleMonthChange(-1)}
+                >
+                  &lt;
+                </button>
+                <h3 className="calendar-month">{getMonthName(currentDate)}</h3>
+                <button
+                  className="calendar-button"
+                  onClick={() => handleMonthChange(1)}
+                >
+                  &gt;
+                </button>
               </div>
-              {generateCalendar()}
+              <div className="calendar-body">
+                <div className="calendar-row">
+                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                    (day) => (
+                      <div key={day} className="calendar-cell header">
+                        {day}
+                      </div>
+                    )
+                  )}
+                </div>
+                {generateCalendar()}
+              </div>
             </div>
           </div>
-        </div>
-        <div className="right-section">
-          {/*<div role="button" className="suggestedroute1"></div>
-          <div role="button" className="suggestedroute2"></div>
-          <div role="button" className="suggestedroute3"></div>*/}
-          <button className="suggestedroute1">one</button>{/*suggested routes from current location*/}
-          <button className="suggestedroute2">two</button>
-          <button className="suggestedroute3">three</button>
+          <div className="right-section">
+            {/*<div role="button" className="suggestedroute1"></div>
+            <div role="button" className="suggestedroute2"></div>
+            <div role="button" className="suggestedroute3"></div>*/}
+            <button className="suggestedroute1">one</button>{/*suggested routes from current location*/}
+            <button className="suggestedroute2">two</button>
+            <button className="suggestedroute3">three</button>
+          </div>
         </div>
       </div>
     </div>
