@@ -55,8 +55,8 @@ const LoginPage = () => {
   // Handle Login Submit (Redirect without validation)
   const handleLoginSubmit = async (e) => {
     e.preventDefault(); // Prevent form submission from refreshing the page
-    /*window.location.href = "/home"; // Redirect to Home Page*/
-    window.open("/home","_blank");// Commenting out the login validation code so we redirect without checking
+    window.location.href = "/home"; // Redirect to Home Page*/
+    /*window.open("/home","_blank");// Commenting out the login validation code so we redirect without checking
     // try {
     //   const salt = await bcrypt.genSalt(11);
     //   loginData.password = await bcrypt.hash(loginData.password, salt);
