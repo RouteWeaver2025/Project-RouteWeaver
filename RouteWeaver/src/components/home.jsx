@@ -116,15 +116,19 @@ const HomePage = () => {
         <h3>{greet} Ryan</h3>
       </div>
       
-      {/*buttons: new route, saved route,smartvacay*/}
+      {/*buttons: new route, saved route, smartvacay*/}
       <div className="box">
         <div className="selectroutebox">
-        <div role="button" className="NewR">
-          <h4>New Route</h4>
-        </div>
-        <div role="button" className="SavedR">
-          <h4>Saved Route</h4>
-        </div>
+          <div
+            role="button"
+            className="NewR"
+            onClick={() => window.open("/newr", "_blank")} // Open new route in a new tab
+          >
+            <h4>New Route</h4>
+          </div>
+          <div role="button" className="SavedR">
+            <h4>Saved Route</h4>
+          </div>
         </div>
         <div className="SmartV">
           <div className="left-section">{/*left section*/}
@@ -159,9 +163,6 @@ const HomePage = () => {
             </div>
           </div>
           <div className="right-section">
-            {/*<div role="button" className="suggestedroute1"></div>
-            <div role="button" className="suggestedroute2"></div>
-            <div role="button" className="suggestedroute3"></div>*/}
             <button className="suggestedroute1">one</button>{/*suggested routes from current location*/}
             <button className="suggestedroute2">two</button>
             <button className="suggestedroute3">three</button>
