@@ -1,6 +1,5 @@
 import {User} from "../models/user.js";
 import {Route} from "../models/routes.js";
-import {Route} from "../models/routes.js";
 async function findUserByEmail(req, res){ //checks email then password
     try {
         const user = await User.findOne(req.params.email); 
