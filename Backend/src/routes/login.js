@@ -7,7 +7,7 @@ dotenv.config();
 const router=express.Router();
 const app=express();
 app.use(express.json());
-const url = process.env.MONGO_URL;
+const url = process.env.MONGODB_URL;
 mongoconnect(url);
 router
   .route('/login')
