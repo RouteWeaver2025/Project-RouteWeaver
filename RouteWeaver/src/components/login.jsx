@@ -4,9 +4,9 @@ import bcrypt from "bcryptjs";
 import { useNavigate } from "react-router-dom";
 import validator from "validator";
 import "../design/login.css"; // Your CSS file
-import HomePage from "./home";
 
 const LoginPage = () => {
+  const navigate = useNavigate();
   // State for Signup Form
   const [signupData, setSignupData] = useState({
     username: "",
@@ -34,17 +34,25 @@ const LoginPage = () => {
 
   // Handle Signup Submit
   const handleSignupSubmit = async (e) => {
-    // e.preventDefault(); // Commenting out to keep logic intact
+    e.preventDefault(); 
     if (!validator.isEmail(signupData.email)) {
       alert("Invalid email address! Please enter a valid email."); // Set the error message
       return; // Stop form submission
     }
     try {
       const salt = await bcrypt.genSalt(11);
-      signupData.password = await bcrypt.hash(signupData.password, salt);
-      const response = await axios.post("http://localhost:5000/user/signup", signupData);
-      if (response.data.message === "User Added!") {
-        HomePage(signupData.email);
+      const hashedpass = await bcrypt.hash(signupData.password, salt);
+      const response = await axios.post("http://localhost:5000/user/signup", {
+        email: signupData.email,
+        password: hashedpass,
+        username: signupData.username,
+      });
+      if (response.status === 201) {
+        sessionStorage.setItem("email", signupData.email); // Store email in sessionStorage
+        navigate(response.data.redirectUrl);// Redirect to Home Page
+      }
+      else {
+        alert(response.data.message); // Set the error message
       }
       console.log("Signup Response:", response.data);
     } catch (error) {
@@ -53,29 +61,20 @@ const LoginPage = () => {
   };
 
   // Handle Login Submit (Redirect without validation)
+
   const handleLoginSubmit = async (e) => {
-    e.preventDefault(); // Prevent form submission from refreshing the page
-    window.location.href = "/home"; // Redirect to Home Page*/
-    /*window.open("/home","_blank");// Commenting out the login validation code so we redirect without checking
-    // try {
-    //   const salt = await bcrypt.genSalt(11);
-    //   loginData.password = await bcrypt.hash(loginData.password, salt);
-    //   const response = await axios.post("http://localhost:5000/user/login", loginData);
-    //   console.log("Login Response:", response.data);
-    //   if (response.data.message === "Login Successful") {
-    //     Homepage(loginData.email);
-    //   }
-    // } catch (error) {
-    //   console.error("Login Error:", error.message);
-    // }
-
-    // Direct redirect to Home Page without validation
-    /*HomePage(loginData.email); // Redirect to HomePage with the login data's email
-  */};
-
-  /*const handleclick = () => {
-    window.location.href = "/home";
-  };*/
+    e.preventDefault();
+    try {
+      const response = await axios.post("http://localhost:5000/user/login",loginData);
+      console.log(loginData, loginData.email, loginData.password);
+      if (response.status === 200) {
+        sessionStorage.setItem("email", loginData.email); // Store email in sessionStorage
+        navigate(response.data.redirectUrl);
+      }
+    } catch (error) {
+      console.error("Login Error:", error.message);
+    }
+  };
 
   return (
     <div className="main">

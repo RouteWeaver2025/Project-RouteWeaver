@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import "../design/homescreen.css";
+import axios from "axios";
 
 // HomePage component
 const HomePage = () => {
+  const [userName, setUserName]=useState("");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [menuOpen, setMenuOpen] = useState(false); // State to toggle the menu
   const [greet, setGreet] = useState(""); // State to store the greeting message
@@ -62,7 +64,6 @@ const HomePage = () => {
   const greeting = async () => {
     const currentTime = new Date();
     const hours = currentTime.getHours(); // Get current hour
-
     let greetingMessage = "";
 
     if (hours >= 0 && hours <= 11) {
@@ -84,6 +85,16 @@ const HomePage = () => {
     };
     fetchGreeting(); // Call the async function
   }, []); // Empty dependency array ensures this runs only once when the component mounts
+
+   //get username
+   const getName=async ()=>{
+    const email = sessionStorage.getItem("email");
+    const response = await axios.get("http://localhost:5000/home", { params: { email } });
+    setUserName(response.data.user_name); 
+  }
+  useEffect(() => {
+    getName();
+  }, []);
 
   return (
     <div className="main1">
@@ -113,7 +124,7 @@ const HomePage = () => {
 
       {/* Greeting message */}
       <div className="greeting">
-        <h3>{greet} Ryan</h3>
+        <h3>{greet} {userName}</h3>
       </div>
       
       {/*buttons: new route, saved route, smartvacay*/}

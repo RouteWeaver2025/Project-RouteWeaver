@@ -1,17 +1,20 @@
 import {User} from "../models/user.js";
 import {Route} from "../models/routes.js";
+import bcrypt from "bcryptjs";
 async function findUserByEmail(req, res){ //checks email then password
     try {
-        const user = await User.findOne(req.params.email); 
+        const {email,password}=req.body;
+        const user = await User.findOne({ email: email }); // Find user by email
         if (!user) {
             return res.status(404).json({ message: "Email not registered" });
         }
-        if(user.password !== req.body.password) {
+        const isMatch = await bcrypt.compare(password, user.password); //uses bcrypt to compare input password with that present in database.
+        if(!isMatch) {
             return res.status(401).json({ message: "Incorrect password" });
         }
-        res.status(200).json({ message: "Login successful", redirectUrl: "/home" });
+        return res.status(200).json({ message: "Login successful", redirectUrl: "/home" });
     } catch (error) {
-        res.status(500).json({ message: "Server error", error });
+        return res.status(500).json({ message: "Server error", error });
     }
 }
 
@@ -19,7 +22,7 @@ async function addUser(req, res) { //for signup, checks if email already exists
     try{
         const user=req.body;
         if(await User.findOne({email: user.email})){
-            return {message: "Email already exists"};
+            return res.json({message: "Email already exists"});
         }
         else{
             const newUser = new User({username: user.username, email: user.email, password: user.password});
