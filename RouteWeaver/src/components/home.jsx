@@ -122,7 +122,7 @@ const HomePage = () => {
           <div
             role="button"
             className="NewR"
-            onClick={() => window.open("/queries", "_blank")} // Open new route in a new tab
+            onClick={() => window.open("/queries", "_blank")} >{/*New Route button*/}
             <h4>New Route</h4>
           </div>
           <div role="button" className="SavedR">
