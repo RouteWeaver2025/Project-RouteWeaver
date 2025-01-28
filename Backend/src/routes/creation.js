@@ -8,6 +8,6 @@ app.use(express.json());
 
 newr
     .route('/')
-    .post(getRouteWithTouristSpots)
+    .get(getRouteWithTouristSpots)
 
 export {newr};
