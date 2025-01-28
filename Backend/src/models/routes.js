@@ -8,23 +8,27 @@ const RouteSchema = new mongoose.Schema({
   },
   routes: [
     {
-      id: {
-        type: Number, // Name of the route (e.g., route1, route2)
-        required: true,
-        unique: true,
-      },
-      coordinates: [
-        {
-          latitude: {
-            type: Number, // Latitude of the place
-            required: true,
-          },
-          longitude: {
-            type: Number, // Longitude of the place
-            required: true,
-          },
-        },
-      ],
+      routeData:{
+        type:String,
+        required:true
+      }
+      // id: {
+      //   type: Number, // Name of the route (e.g., route1, route2)
+      //   required: true,
+      //   unique: true,
+      // },
+      // coordinates: [
+      //   {
+      //     latitude: {
+      //       type: Number, // Latitude of the place
+      //       required: true,
+      //     },
+      //     longitude: {
+      //       type: Number, // Longitude of the place
+      //       required: true,
+      //     },
+      //   },
+      // ],
     },
   ],
 });
