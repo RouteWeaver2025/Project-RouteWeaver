@@ -1,12 +1,13 @@
 import express from 'express';
 import {addRoutes} from '../utils/fetchdata.js';
+import { getRouteWithTouristSpots } from '../utils/landmarks.js';
 
 const newr=express.Router();
 const app=express();
 app.use(express.json());
 
 newr
-    .route('/custom')
-    .post(addRoutes)
+    .route('/')
+    .get(getRouteWithTouristSpots)
 
 export {newr};
