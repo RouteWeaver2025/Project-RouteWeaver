@@ -1,6 +1,6 @@
 // import {Route} from '../models/routes.js';
 // import {User} from '../models/user';
 
-async function getTravelSummary(req, res) {
+async function summarizer(req, res) {
 }
-export {getTravelSummary};
+export {summarizer};

@@ -1,6 +1,7 @@
 import express from 'express';
 import {addRoutes} from '../utils/fetchdata.js';
 import { getRouteWithTouristSpots } from '../utils/landmarks.js';
+// import {summarizer} from '../utils/summmary.js';
 
 const newr=express.Router();
 const app=express();
@@ -10,4 +11,7 @@ newr
     .route('/')
     .get(getRouteWithTouristSpots)
 
+// newr
+//     .route('/suggestion')
+//     .get(summarizer)
 export {newr};
