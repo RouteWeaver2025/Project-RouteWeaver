@@ -1,6 +1,6 @@
 import express from "express";
 import {fetchSavedRoutes} from "../utils/fetchdata.js";
-import {getTravelSummary} from "../utils/summary.js";
+// import {getTravelSummary} from "../utils/summary.js";
 
 const saver=express.Router();
 const app=express();
@@ -10,7 +10,7 @@ saver
     .route('/')
     .get(fetchSavedRoutes)
 
-saver
-    .route('/:id')
-    .get(getTravelSummary)
+// saver
+    // .route('/:id')
+    // .get(getTravelSummary)
 export {saver};
