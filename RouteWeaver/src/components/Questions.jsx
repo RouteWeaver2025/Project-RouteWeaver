@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import "../design/Questions.css";
+import "../design/questions.css";
 
 const Questions = () => {
   const questions = [
@@ -86,9 +86,13 @@ const Questions = () => {
                       value={destinationLocation}
                       onChange={(e) => setDestinationLocation(e.target.value)}
                     />
+                    <div classname="Night">
+                     <button id="get-location-btn" onClick={getLocation}>Get My Location</button>
+                     <button id="next-btn" onClick={nextQuestion}>Next</button>
+                     </div>
                   </div>
-                  <button id="next-btn" onClick={nextQuestion}>Next</button>
-                  <button id="get-location-btn" onClick={getLocation}>Get My Location</button>
+                  
+                 
                   {error && <p>{error}</p>}
                 </>
               ) : (

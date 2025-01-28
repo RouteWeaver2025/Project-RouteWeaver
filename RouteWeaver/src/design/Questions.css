@@ -2,15 +2,14 @@
 /* General styles */
 body {
   font-family: "Arial", sans-serif;
-  background-color: #f4f4f4;
   margin: 0;
   padding: 0;
   text-align: center;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100vh;
-  background-image: url('C:\\Users\\joyal\\OneDrive\\Desktop\\Trial\\trial1\\src\\nathan-anderson-L95xDkSSuWw-unsplash.jpg'); /* Add your background image URL here */
+  min-height: 100vh;
+  background-image: url('nathan-anderson-L95xDkSSuWw-unsplash.jpg');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -28,7 +27,7 @@ body {
 
 /* Enlarged questionnaire box */
 .questionnaire-box {
-  width: 85%; /* Increased width */
+  width:auto; /* Increased width */
   max-width: 1200px; /* Set maximum width */
   height: auto; /* Allow the height to grow as needed */
   background: white;
@@ -118,51 +117,48 @@ body {
 /* Adjust the buttons' appearance */
 #next-btn,
 #get-location-btn {
-  width: auto; /* Allow buttons to adjust width based on content */
+  width: 200px; /* Allow buttons to adjust width based on content */
+  height: 50px;
   padding: 10px 20px; /* Reduced padding for better spacing */
   font-size: 16px; /* Reduced font size for better spacing */
   margin-top: 10px; /* Add a little space above the buttons */
 }
 
-/* Container for the buttons to align them side by side */
-.buttons-container {
-  display: flex;
-  justify-content: space-between; /* Space out the buttons */
-  gap: 15px; /* Space between the buttons */
-  width: 100%; /* Ensure the buttons span full width */
-  margin-top: 20px; /* Space above the buttons */
-}
-
-/* Adjust button styling to fit within the container */
-#next-btn,
-#get-location-btn {
-  width: 48%; /* Ensure the buttons share the width equally */
-  padding: 10px 20px; /* Adjust padding */
-  font-size: 16px;
-  border-radius: 6px;
-}
-
+/* Adjust next button specifically for the second question */
 #next-btn {
+  margin-left: 100px;
   background-color: #28a745;
   color: white;
   border: none;
+  margin-top: 10px; /* Space between input and button */
+  /*width: auto; /* Make next button fit content */
 }
 
 #next-btn:hover {
   background-color: #218838;
 }
 
+/* Adjust get-location button */
+/*.Night{
+
+  background-color: #c82333;
+  width: 100vw;
+  display: flex;
+  flex-direction: row;
+  justify-content:left;
+  align-content: space-evenly;
+}*/
 #get-location-btn {
   background-color: #007bff;
   color: white;
   border: 1px solid #007bff;
+  margin-top: 10px;
 }
 
 #get-location-btn:hover {
   background-color: #0056b3;
   border: 1px solid #0056b3;
 }
-
 
 /* Summary section */
 #summary {
