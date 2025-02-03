@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import "../design/homescreen.css";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 // HomePage component
 const HomePage = () => {
-  const [userName, setUserName]=useState("");
+  const navigate = useNavigate();
+  const [userName, setUserName] = useState("");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [menuOpen, setMenuOpen] = useState(false); // State to toggle the menu
   const [greet, setGreet] = useState(""); // State to store the greeting message
@@ -86,96 +88,98 @@ const HomePage = () => {
     fetchGreeting(); // Call the async function
   }, []); // Empty dependency array ensures this runs only once when the component mounts
 
-   //get username
-   const getName=async ()=>{
+  //get username
+  const getName = async () => {
     const email = sessionStorage.getItem("email");
     const response = await axios.get("http://localhost:5000/home", { params: { email } });
-    setUserName(response.data.user_name); 
+    setUserName(response.data.user_name);
   }
   useEffect(() => {
     getName();
   }, []);
 
   return (
-    <div className="main1">
-      {/* Menu bar always visible */}
-      <div className="homeTop">
-        <div className="menuicon" onClick={handleMenuToggle}>
-          <div className="bar1"></div>
-          <div className="bar2"></div>
-          <div className="bar3"></div>
+    <div className="home-container">
+      <div className="main2">
+        {/* Menu bar always visible */}
+        <div className="homeTop">
+          <div className="menuicon" onClick={handleMenuToggle}>
+            <div className="bar1"></div>
+            <div className="bar2"></div>
+            <div className="bar3"></div>
+          </div>
         </div>
-      </div>
 
-      {/* Menu that toggles visibility */}
-      <div className={`menu ${menuOpen ? "open" : ""}`}>
-        <div className="menuicon inside-menu" onClick={handleMenuToggle}>
-          <div className="bar1"></div>
-          <div className="bar2"></div>
-          <div className="bar3"></div>
-        </div>
-        {/*<div className="menu-content">
+        {/* Menu that toggles visibility */}
+        <div className={`menu ${menuOpen ? "open" : ""}`}>
+          <div className="menuicon inside-menu" onClick={handleMenuToggle}>
+            <div className="bar1"></div>
+            <div className="bar2"></div>
+            <div className="bar3"></div>
+          </div>
+          {/*<div className="menu-content">
           { Add your menu items here }
         </div>*/}
-        <div className="menu-item logout" onClick={() => alert("Logged out")}>
-          <h3>Logout</h3>
+          <div className="menu-item logout" onClick={() => alert("Logged out")}>
+            <h3>Logout</h3>
+          </div>
         </div>
-      </div>
 
-      {/* Greeting message */}
-      <div className="greeting">
-        <h3>{greet} {userName}</h3>
-      </div>
-      
-      {/*buttons: new route, saved route, smartvacay*/}
-      <div className="box">
-        <div className="selectroutebox">
-          <div
-            role="button"
-            className="NewR"
-            onClick={() => window.open("/queries", "_blank")} >{/*New Route button*/}
-            <h4>New Route</h4>
-          </div>
-          <div role="button" className="SavedR">
-            <h4>Saved Route</h4>
-          </div>
+        {/* Greeting message */}
+        <div className="greeting">
+          <h3>{greet} {userName}</h3>
         </div>
-        <div className="SmartV">
-          <div className="left-section">{/*left section*/}
-            <div className="calendar">{/* Calendar component */}
-              <div className="calendar-header">
-                <button
-                  className="calendar-button"
-                  onClick={() => handleMonthChange(-1)}
-                >
-                  &lt;
-                </button>
-                <h3 className="calendar-month">{getMonthName(currentDate)}</h3>
-                <button
-                  className="calendar-button"
-                  onClick={() => handleMonthChange(1)}
-                >
-                  &gt;
-                </button>
-              </div>
-              <div className="calendar-body">
-                <div className="calendar-row">
-                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                    (day) => (
-                      <div key={day} className="calendar-cell header">
-                        {day}
-                      </div>
-                    )
-                  )}
-                </div>
-                {generateCalendar()}
-              </div>
+
+        {/*buttons: new route, saved route, smartvacay*/}
+        <div className="box">
+          <div className="selectroutebox">
+            <div
+              role="button"
+              className="NewR"
+              onClick={() => navigate('/queries')} >{/*New Route button*/}
+              <h4>New Route</h4>
+            </div>
+            <div role="button" className="SavedR">
+              <h4>Saved Route</h4>
             </div>
           </div>
-          <div className="right-section">
-            <button className="suggestedroute1">one</button>{/*suggested routes from current location*/}
-            <button className="suggestedroute2">two</button>
-            <button className="suggestedroute3">three</button>
+          <div className="SmartV">
+            <div className="left-section">{/*left section*/}
+              <div className="calendar">{/* Calendar component */}
+                <div className="calendar-header">
+                  <button
+                    className="calendar-button"
+                    onClick={() => handleMonthChange(-1)}
+                  >
+                    &lt;
+                  </button>
+                  <h3 className="calendar-month">{getMonthName(currentDate)}</h3>
+                  <button
+                    className="calendar-button"
+                    onClick={() => handleMonthChange(1)}
+                  >
+                    &gt;
+                  </button>
+                </div>
+                <div className="calendar-body">
+                  <div className="calendar-row">
+                    {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                      (day) => (
+                        <div key={day} className="calendar-cell header">
+                          {day}
+                        </div>
+                      )
+                    )}
+                  </div>
+                  {generateCalendar()}
+                </div>
+              </div>
+            </div>
+            <div className="right-section">
+              <button className="suggestedroute1">one</button>{/*suggested routes from current location*/}
+              <button className="suggestedroute2">two</button>
+              <button className="suggestedroute3">three</button>
+            </div>
           </div>
         </div>
       </div>

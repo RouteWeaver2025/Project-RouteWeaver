@@ -1,22 +1,45 @@
-import React from 'react'; 
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import React, { useEffect, useState } from 'react'; 
+import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import LoginPage from './components/login';
 import HomePage from './components/home';
-import Newr from './components/newr';
-import Summary from './components/summary';
-import Questions from './components/Questions';
+// import Timeline from './components/suggest';
+// import Summary from './components/summary';
+import Questions from './components/query';
+
+const AppWrapper = () => {
+  const location = useLocation();
+  const [pageClass, setPageClass] = useState("");
+
+  useEffect(() => {
+    if (location.pathname === "/") {
+      setPageClass("login-container");
+    } else if (location.pathname === "/home") {
+      setPageClass("home-container");
+    }else if (location.pathname === "/queries") {
+      setPageClass("query-container");} 
+    else {
+      setPageClass(""); // Default class for other pages
+    }
+  }, [location.pathname]);
+
+  return (
+    <div className={pageClass}>
+      <Routes>
+        <Route path="/" element={<LoginPage />} />
+        <Route path="/home" element={<HomePage />} />
+        {/* <Route path="/suggestions" element={<Timeline/>} />  */}
+        <Route path="/queries" element={<Questions />} /> 
+      </Routes>
+    </div>
+  );
+};
 
 const App = () => {
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<LoginPage />} />
-        <Route path="/home" element={<HomePage />} />
-        <Route path="/suggestion" element={<Newr />} />
-        <Route path="/summary" element={<Summary />} />
-        <Route path="/queries" element={<Questions />} />
-      </Routes>
+      <AppWrapper />
     </Router>
   );
 };
-export default App
+
+export default App;

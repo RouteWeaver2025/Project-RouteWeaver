@@ -1,29 +1,31 @@
-body{
-	margin: 0;
-	padding: 0;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	min-height: 100vh;
-	/* font-family: 'Jost', sans-serif; */
-	/* background-image: linear-gradient(to right top, #020202, #ffffff, #79787a, #f5f5f5,#050506); */
-	background: linear-gradient(2deg, #1c1a1f, #000000);
+body {
+    margin: 0;
+    padding: 0;
     font-family: 'Roboto', sans-serif;
 }
+
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: url(../assets/roadtrip.jpg) no-repeat center/cover;
+}
+
+.main1 {
+    position: relative;
+    width: 350px;
+    height: 500px;
+    overflow:hidden;
+    border-radius: 10px;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+    background: rgba(0, 0, 0, 0.8);
+}
 @media only screen and (max-width: 600px){
-	.main{
+	.main1{
 		width: 100%;
 	}
-}
-.main{
-	width: 350px;
-	height: 500px;
-	background: rgba(235, 2, 2, 0.475);
-	overflow: hidden;
-	background: url("https://doc-08-2c-docs.googleusercontent.com/docs/securesc/68c90smiglihng9534mvqmq1946dmis5/fo0picsp1nhiucmc0l25s29respgpr4j/1631524275000/03522360960922298374/03522360960922298374/1Sx0jhdpEpnNIydS4rnN4kHSJtU1EyWka?e=view&authuser=0&nonce=gcrocepgbb17m&user=03522360960922298374&hash=tfhgbs86ka6divo3llbvp93mg4csvb38") no-repeat center/ cover;
-	border-radius: 10px;
-	background: linear-gradient(2deg, #212121, #0c0c0c);
-	box-shadow: 5px 20px 50px #000000;
 }
 #chk{
 	display: none;
@@ -100,72 +102,120 @@ button:hover{
 	transform: scale(.6);
 }
 
-/* body{
-    /*background-image: url(./assets/img5.jpg);*/
-    /* background-position: center;
-    background-repeat: no-repeat;
-    background-size: cover;
-    background-attachment: fixed;
-    display: flex;
-    justify-content:center;
-    min-height: 100vh;
-    align-items: center;
+/* body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Roboto', sans-serif;
 }
-.login-container { */
-    /* text-align: center; */
-    /*backdrop-filter: blur(50px);*/
-    /* margin: 10px;
-    width: 400px;
-    padding: 20px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    background-color: lightgrey;
-    color: black;
 
-  }
-  
-  .login-form {
-    margin-top: 20px;
-  }
-  
-  .form-group {
-    margin-bottom: 15px;
-    text-align: left;
-  }
-  
-  label {
-    display: block;
-    font-weight: bold;
-    margin-bottom: 5px;
-  }
-  
-  input {
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: url(../assets/roadtrip.jpg) no-repeat center/cover;
+}
+
+.main1 {
+    position: relative;
+    width: 350px;
+    height: 500px;
+    overflow:hidden;
+    border-radius: 10px;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+    background: rgba(0, 0, 0, 0.8);
+}
+
+#chk {
+    display: none;
+}
+
+.signup, .login {
+    position: absolute;
     width: 100%;
-    padding: 8px;
-    margin-top: 5px;
-    border: 1px solid black;
-    border-radius: 4px;
-    background-color: darkgrey;
-    color: black;
-  }
-  
-  .submit-button {
-    padding: 10px 15px;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 4px;
+    height: 100%;
+    transition: .8s ease-in-out;
+}
+
+.signup {
+    background: rgba(0, 0, 0, 0.8);
+    position: relative;
+}
+
+.login {
+    background: rgba(0, 0, 0, 0.95);
+    border-radius: 50% / 10% 10% 0 0;
+    transform: translateY(100%);
+    top: 0;
+}
+
+#chk:checked ~ .login {
+    transform: translateY(40%);
+    border-radius: 60% / 10% 10% 0 0;
+}
+
+label {
+    color: #fff;
+    font-size: 2.3em;
+    display: flex;
+    justify-content: center;
+    margin: 50px auto;
+    font-weight: bold;
     cursor: pointer;
-  }
-  
-  .toggle-text {
-    margin-top: 15px;
-  }
-  
-  .toggle-button {
-    background: none;
+    transition: .5s ease-in-out;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+input {
+    width: 60%;
+    height: 40px;
+    background: #e0dede;
+    display: flex;
+    justify-content: center;
+    margin: 20px auto;
+    padding: 10px;
     border: none;
-    color: #007bff;
+    outline: none;
+    border-radius: 5px;
+}
+
+button {
+    width: 60%;
+    height: 40px;
+    margin: 10px auto;
+    display: block;
+    color: #fff;
+    background: #000;
+    font-size: 1em;
+    font-weight: bold;
+    outline: none;
+    border: none;
+    border-radius: 5px;
+    transition: .2s ease-in;
     cursor: pointer;
-  }
-    */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+button:hover {
+    background: #1a1a1a;
+}
+
+.login label {
+    transform: scale(.6);
+}
+
+#chk:checked ~ .login label {
+    transform: scale(1);
+}
+
+#chk:checked ~ .signup label {
+    transform: scale(.6);
+}
+
+@media only screen and (max-width: 600px) {
+    .main1 {
+        width: 100%;
+        border-radius: 0;
+    }
+} */

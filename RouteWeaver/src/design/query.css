@@ -1,0 +1,240 @@
+/* query.css */
+.query-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  background-image: url(../assets/airplane.jpg); 
+  background-size: cover;
+  background-position:center;
+}
+#name{
+  width:fit-content;
+  position: absolute;
+  top:0px;
+  left: 20px;
+  z-index: 1000;
+  background-color:transparent;
+  border:none;
+  cursor:pointer;
+}
+#name:hover{
+  background: rgba(0, 0, 0, 0.5); 
+  backdrop-filter: blur(5px); 
+}
+
+
+/*first  query*/
+.options{
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+}
+#custom{
+  margin-right: 20px;
+  border-radius: 14px;
+  cursor: pointer;
+  background-color: rgba(0, 0, 0, 0.5); 
+}
+#pkg{
+  margin-left: 20px;
+  border-radius: 14px;
+  cursor: pointer;
+  background-color: rgba(0, 0, 0, 0.5); 
+}
+#custom:hover,#pkg:hover{
+  background: rgba(122, 118, 118, 0.5); 
+  backdrop-filter: blur(5px);
+}
+
+/*second query*/
+@media (max-width: 1920px) { 
+  .main {
+    width: 500px; 
+    height: 400px;
+  }
+  #text2{
+    font-size: x-large;
+  }
+  .move{
+    width: 100%;
+    height:60px
+  }
+  #custom{
+    font-size: medium;
+    margin-right: 20px;
+    width:150px;
+    height:150px;
+  }
+  #pkg{
+    margin-left: 20px;
+    width:150px;
+    height:150px;
+  }
+  #solo{
+    font-size: medium;
+    margin-right: 20px;
+    margin-top: 10px;
+    width:150px;
+    height:150px;
+  }
+  .multiple{
+    font-size: medium;
+    margin-left: 20px;
+    width:150px;
+    height:150px;
+  }
+}
+
+
+/* Styles for phones */
+@media (max-width: 768px) { 
+  .main {
+    width: 100%;
+    height: 400px; 
+  }
+  .move{
+    width: 100%;
+    height:40px
+  }
+  #text2{
+    font-size: medium;
+  }
+  #custom{
+    margin-right: 10px;
+    width:80px;
+    height:70px;
+  }
+  #pkg{
+    margin-left: 10px;
+    width:80px;
+    height:70px;
+  }
+}
+
+.move{
+  margin: auto;
+  margin-left: 10px;
+  display: flex;
+  flex-direction: row;
+  justify-content:space-between;
+  align-items: center;
+}
+.main{
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding:30px;
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.5); 
+  backdrop-filter: blur(5px); 
+  color: white;
+}
+.search-bar-container {
+  text-align: center;
+}
+
+#back {
+  width: 50px;
+  height: 50px;
+  padding: 10px 20px;
+  border: none;
+  display: block;
+  background-color: rgba(0, 0, 0, 0.5); 
+  backdrop-filter: blur(5px);
+  color: white; 
+  font-size: 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: center;
+  line-height: 30px;
+  background-image: url(../assets/l_arrow.svg);
+  background-repeat: no-repeat;
+  background-position: center  10px;
+  background-size: 50px; 
+}
+
+
+#next:hover,#back:hover {
+  background-color: rgba(122, 118, 118, 0.5); 
+  backdrop-filter: blur(5px);
+}
+#next{
+  width: 50px;
+  height: 50px;
+  padding: 10px 20px;
+  border: none;
+  display: block;
+  background-color: rgba(0, 0, 0, 0.5); 
+  backdrop-filter: blur(5px);
+  color: white; 
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  text-align: center;
+  line-height: 30px;
+  background-image: url(../assets/r_arrow.svg);
+  background-repeat: no-repeat;
+  background-position: center  10px; 
+  background-size: 50px; 
+}
+
+#search-bar {
+  width: 80%;
+  max-width: 400px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/*third query*/
+.options1{
+  display: flex;
+  flex-direction: row;
+  padding: 30px;
+  align-items: center;
+  justify-content: center;
+}
+#solo{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px; 
+  padding: 10px 20px;
+  border: none;
+  background-color: rgba(0, 0, 0, 0.5); 
+  border-radius: 14px;
+  cursor: pointer;
+}
+.multiple{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px; 
+  padding: 10px 20px;
+  border: none;
+  background-color: rgba(0, 0, 0, 0.5); 
+  border-radius: 14px;
+  cursor: pointer;
+}
+
+#measure{
+  width: 40px; /* Match text width */
+  text-align: center;
+}
+#text3{
+  margin:0px;
+}
+#solo:hover{
+  background: rgba(122, 118, 118, 0.5); 
+  backdrop-filter: blur(5px);
+}

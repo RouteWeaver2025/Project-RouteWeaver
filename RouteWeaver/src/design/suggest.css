@@ -1,0 +1,119 @@
+.timeline-container {
+    width: 100%;
+    max-width: 800px;
+    margin: 2rem auto;
+    position: relative;
+  }
+  
+  .timeline-line {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: #ccc;
+    transform: translateX(-50%);
+  }
+  
+  .timeline-item {
+    display: flex;
+    width: 100%;
+    margin-bottom: 2rem;
+  }
+  
+  .left {
+    justify-content: flex-start;
+  }
+  
+  .right {
+    justify-content: flex-end;
+  }
+  
+  .timeline-content {
+    width: 50%;
+    position: relative;
+  }
+  
+  .dot {
+    width: 10px;
+    height: 10px;
+    background: blue;
+    border-radius: 50%;
+    position: absolute;
+    top: 0;
+    cursor: pointer;
+  }
+  
+  .dot-left {
+    right: -5px;
+  }
+  
+  .dot-right {
+    left: -5px;
+  }
+  
+  .hover-box {
+    position: absolute;
+    top: 0;
+    width: 200px;
+    background: white;
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease-in-out;
+  }
+  
+  .hover-left {
+    left: 0;
+  }
+  
+  .hover-right {
+    right: 0;
+  }
+  
+  .hover-box img {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 5px;
+    margin-bottom: 5px;
+  }
+  
+  .button-group {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+  }
+  
+  .accept,
+  .decline {
+    display: flex;
+    align-items: center;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    color: white;
+    border: none;
+  }
+  
+  .accept {
+    background: green;
+  }
+  
+  .accept:hover {
+    background: darkgreen;
+  }
+  
+  .decline {
+    background: red;
+  }
+  
+  .decline:hover {
+    background: darkred;
+  }
+  
+  .icon {
+    margin-right: 5px;
+  }
+  

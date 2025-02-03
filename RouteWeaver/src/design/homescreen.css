@@ -5,7 +5,7 @@
     box-sizing: border-box; /* Ensures padding/borders don't affect width/height */
 }
 
-body {
+.home-container {
     margin: 0;
     padding: 0;
     display: flex;
@@ -13,7 +13,7 @@ body {
     width: 100%;
     min-height: 100vh;
     justify-content: space-around;
-    background-image: url('C:\VSCode\Project-RouteWeaver\RouteWeaver\src\assets\homeimg.jpg');
+    background-image: url(../assets/homeimg.jpg);
     background-size: cover;
     background-repeat: no-repeat;
     background-position: center;
@@ -27,7 +27,7 @@ body {
 }
 
 /* Main Wrapper */
-.main1 {
+.main2 {
     width: 100vw; /* 100% of the viewport width */
     max-width: 100%;
     min-height: 100vh;

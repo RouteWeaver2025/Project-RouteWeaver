@@ -34,7 +34,7 @@ const LoginPage = () => {
 
   // Handle Signup Submit
   const handleSignupSubmit = async (e) => {
-    e.preventDefault(); 
+    e.preventDefault();
     if (!validator.isEmail(signupData.email)) {
       alert("Invalid email address! Please enter a valid email."); // Set the error message
       return; // Stop form submission
@@ -65,7 +65,7 @@ const LoginPage = () => {
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post("http://localhost:5000/user/login",loginData);
+      const response = await axios.post("http://localhost:5000/user/login", loginData);
       console.log(loginData, loginData.email, loginData.password);
       if (response.status === 200) {
         sessionStorage.setItem("email", loginData.email); // Store email in sessionStorage
@@ -77,69 +77,69 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="main">
-      <input type="checkbox" id="chk" aria-hidden="true" />
+      <div className="main1">
+        <input type="checkbox" id="chk" aria-hidden="true" />
 
-      {/* Signup Form */}
-      <div className="signup">
-        <form onSubmit={handleSignupSubmit}>
-          <label htmlFor="chk" aria-hidden="true">
-            Sign up
-          </label>
-          <input
-            type="text"
-            name="username"
-            placeholder="User name"
-            value={signupData.username}
-            onChange={handleSignupChange}
-            required
-          />
-          <input
-            type="email"
-            name="email"
-            placeholder="Email"
-            value={signupData.email}
-            onChange={handleSignupChange}
-            required
-          />
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={signupData.password}
-            onChange={handleSignupChange}
-            required
-          />
-          <button type="submit" onClick={handleSignupSubmit}>Sign up</button>
-        </form>
-      </div>
+        {/* Signup Form */}
+        <div className="signup">
+          <form onSubmit={handleSignupSubmit}>
+            <label htmlFor="chk" aria-hidden="true">
+              Sign up
+            </label>
+            <input
+              type="text"
+              name="username"
+              placeholder="User name"
+              value={signupData.username}
+              onChange={handleSignupChange}
+              required
+            />
+            <input
+              type="email"
+              name="email"
+              placeholder="Email"
+              value={signupData.email}
+              onChange={handleSignupChange}
+              required
+            />
+            <input
+              type="password"
+              name="password"
+              placeholder="Password"
+              value={signupData.password}
+              onChange={handleSignupChange}
+              required
+            />
+            <button type="submit" onClick={handleSignupSubmit}>Sign up</button>
+          </form>
+        </div>
 
-      {/* Login Form */}
-      <div className="login">
-        <form onSubmit={handleLoginSubmit}>
-          <label htmlFor="chk" aria-hidden="true">
-            Login
-          </label>
-          <input
-            type="email"
-            name="email"
-            placeholder="Email"
-            value={loginData.email}
-            onChange={handleLoginChange}
-            required
-          />
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={loginData.password}
-            onChange={handleLoginChange}
-            required
-          />
-          <button type="submit">Login</button>
-        </form>
+        {/* Login Form */}
+        <div className="login">
+          <form onSubmit={handleLoginSubmit}>
+            <label htmlFor="chk" aria-hidden="true">
+              Login
+            </label>
+            <input
+              type="email"
+              name="email"
+              placeholder="Email"
+              value={loginData.email}
+              onChange={handleLoginChange}
+              required
+            />
+            <input
+              type="password"
+              name="password"
+              placeholder="Password"
+              value={loginData.password}
+              onChange={handleLoginChange}
+              required
+            />
+            <button type="submit">Login</button>
+          </form>
+        </div>
       </div>
-    </div>
   );
 };
 
