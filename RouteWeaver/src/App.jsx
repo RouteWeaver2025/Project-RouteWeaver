@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import LoginPage from './components/login';
 import HomePage from './components/home';
-// import Timeline from './components/suggest';
+import Timeline from './components/suggest';
 // import Summary from './components/summary';
 import Questions from './components/query';
 
@@ -17,6 +17,9 @@ const AppWrapper = () => {
       setPageClass("home-container");
     }else if (location.pathname === "/queries") {
       setPageClass("query-container");} 
+    else if(location.pathname==="/suggestions"){
+      setPageClass("timeline-container");
+    }
     else {
       setPageClass(""); // Default class for other pages
     }
@@ -27,7 +30,7 @@ const AppWrapper = () => {
       <Routes>
         <Route path="/" element={<LoginPage />} />
         <Route path="/home" element={<HomePage />} />
-        {/* <Route path="/suggestions" element={<Timeline/>} />  */}
+        <Route path="/suggestions" element={<Timeline/>} />
         <Route path="/queries" element={<Questions />} /> 
       </Routes>
     </div>

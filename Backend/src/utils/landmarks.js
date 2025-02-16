@@ -19,7 +19,6 @@ async function getRouteWithTouristSpots(req, res) {
 
         const polyline = directionsResponse.data.routes[0].overview_polyline.points;
         const points = decodePolyline(polyline);
-
         // Fetching tourist attractions along the route
         const radius = 10000; // 10 km radius
         const step = Math.floor(points.length / 50); // Reduce the number of points to avoid excessive API calls
