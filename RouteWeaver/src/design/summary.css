@@ -1,0 +1,130 @@
+/* Global Styles */
+/* * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+} */
+
+body {
+    font-family: 'Roboto', sans-serif;
+    background-image: url(../assets/homeimg.jpg);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    overflow: hidden;
+}
+
+/* Full-Screen Container */
+.summary-page {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    height: 100vh;
+    width: 100vw;
+    max-width: 100%;
+   
+    padding: 20px;
+}
+
+/* Addresses Positioned Outside Container */
+.start-address, .destination-address {
+    font-size: 1.5rem;
+    color: white;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+/* Main Container (Covers Entire Screen) */
+.summary-container {
+    width: 80%;
+    height: 80vh;
+    /* background: rgba(0, 0, 0, 0); */
+    /* backdrop-filter: blur(10px); */
+    border-radius: 15px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0);
+}
+
+/* Scrollable Waypoints List */
+.waypoints-list {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+/* Custom Scrollbar */
+.waypoints-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.waypoints-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 10px;
+}
+
+.waypoints-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Waypoint Tile */
+.waypoint-tile {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 15px;
+    padding-left: 20px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    transition: transform 0.3s, background 0.3s;
+}
+
+.waypoint-tile:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.05);
+}
+
+/* Increased Font Size for Waypoints */
+.waypoint-text {
+    color: white;
+    font-size: 1.8rem;
+    flex-grow: 1;
+    text-align: left;
+}   
+
+/* Smaller Delete Button */
+.delete-btn {
+    background: transparent;
+    border: none;
+    color: red;
+    font-size: 1rem;
+    max-width: 100px;
+    padding: 5px 8px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.delete-btn:hover {
+    transform: scale(1.1);
+}
+
+/* Add Button */
+.add-btn {
+    width: 80%;
+    padding: 10px;
+    border: none;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    font-size: 1rem;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.add-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
