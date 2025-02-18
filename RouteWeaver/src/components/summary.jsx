@@ -1,14 +1,13 @@
 import React, { useState } from "react";
 import "../design/summary.css";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const Summary = () => {
   const navigate = useNavigate();
-  const [waypoints, setWaypoints] = useState([
-    "Waypoint 1",
-    "Waypoint 2",
-    "Waypoint 3",
-  ]);
+  const location = useLocation();
+  const acceptedLocations = location.state?.acceptedLocations || []; // Retrieve accepted locations
+
+  const [waypoints, setWaypoints] = useState(acceptedLocations); // Use accepted locations
 
   const handleDelete = (index) => {
     setWaypoints(waypoints.filter((_, i) => i !== index));
@@ -18,22 +17,27 @@ const Summary = () => {
       <div className="summary-container">
         {/* RouteWeaver Button (Top Left) */}
         <button id="name" onClick={() => navigate('/home')}>RouteWeaver</button>
+        
         {/* Edit Button (Top Right) */}
-        <button className="edit-btn">✏️ Edit</button>
+        <button className="edit-btn" onClick={() => navigate('/suggestions')}>✏️ Edit</button>
 
         {/* Starting Address */}
         <h2 className="start-address">Starting Address: New York, NY</h2>
 
         {/* Waypoints List */}
         <div className="waypoints-list">
-          {waypoints.map((waypoint, index) => (
-            <div key={index} className="waypoint-tile">
-              <span className="waypoint-text">{waypoint}</span>
-              <button className="delete-btn" onClick={() => handleDelete(index)}>
-                ❌
-              </button>
-            </div>
-          ))}
+          {waypoints.length > 0 ? (
+            waypoints.map((waypoint, index) => (
+              <div key={index} className="waypoint-tile">
+                <span className="waypoint-text">{waypoint}</span>
+                <button className="delete-btn" onClick={() => handleDelete(index)}>
+                  ❌
+                </button>
+              </div>
+            ))
+          ) : (
+            <p className="empty-message">No waypoints added yet.</p>
+          )}
         </div>
 
         {/* Destination Address */}
@@ -48,4 +52,5 @@ const Summary = () => {
       </div>
   );
 }
+
 export default Summary;
