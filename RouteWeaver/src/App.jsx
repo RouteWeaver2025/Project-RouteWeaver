@@ -3,8 +3,10 @@ import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-route
 import LoginPage from './components/login';
 import HomePage from './components/home';
 import Timeline from './components/suggest';
-// import Summary from './components/summary';
+import Summary from './components/summary';
 import Questions from './components/query';
+import SavedRoutes from './components/saver';
+
 
 const AppWrapper = () => {
   const location = useLocation();
@@ -18,6 +20,10 @@ const AppWrapper = () => {
     }else if (location.pathname === "/queries") {
       setPageClass("query-container");} 
     else if(location.pathname==="/suggestions"){
+      setPageClass("timeline-container");}
+    // else if(location.pathname==="/saver"){
+    //   setPageClass("timeline-container");}
+    else if(location.pathname==="/summary"){
       setPageClass("timeline-container");
     }
     else {
@@ -32,6 +38,8 @@ const AppWrapper = () => {
         <Route path="/home" element={<HomePage />} />
         <Route path="/suggestions" element={<Timeline/>} />
         <Route path="/queries" element={<Questions />} /> 
+        {/* <Route path="/saver" element={<SavedRoutes />} /> */}
+        <Route path="/summary" element={<Summary />} />
       </Routes>
     </div>
   );
