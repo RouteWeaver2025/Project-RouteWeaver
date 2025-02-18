@@ -21,8 +21,8 @@ const AppWrapper = () => {
       setPageClass("query-container");} 
     else if(location.pathname==="/suggestions"){
       setPageClass("timeline-container");}
-    // else if(location.pathname==="/saver"){
-    //   setPageClass("timeline-container");}
+     else if(location.pathname==="/saver"){
+       setPageClass("timeline-container");}
     else if(location.pathname==="/summary"){
       setPageClass("timeline-container");
     }
@@ -38,7 +38,7 @@ const AppWrapper = () => {
         <Route path="/home" element={<HomePage />} />
         <Route path="/suggestions" element={<Timeline/>} />
         <Route path="/queries" element={<Questions />} /> 
-        {/* <Route path="/saver" element={<SavedRoutes />} /> */}
+        <Route path="/saver" element={<SavedRoutes />} /> 
         <Route path="/summary" element={<Summary />} />
       </Routes>
     </div>

@@ -1,0 +1,92 @@
+/* Global Styles */
+.saver-container {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-height: 100vh;
+    justify-content: space-around;
+    background-image: url(../assets/homeimg.jpg);
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+    font-family: 'Roboto', sans-serif;
+    overflow-x: hidden; /* Prevents horizontal overflow */
+    align-items: center;
+}
+
+/* Routes List */
+.routes-list {
+    width: 50%; /* 100% of the viewport width */
+    max-width: 100%;
+    height: 50vh;
+    padding-left: 20px; /* Optional padding for inner elements */
+    background: rgba(0, 0, 0, 0.5); /* Light transparent overlay */
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 20px;
+    margin: 0;
+}
+
+/* Individual Route Tile */
+.route-tile {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 90%;
+    padding: 15px 20px;
+    background: rgba(55, 49, 49, 0.5);
+    border-radius: 10px;
+    color: white;
+    font-size: 1rem;
+    transition: background 0.3s, transform 0.3s;
+}
+
+.route-tile:hover {
+    background: rgba(33, 33, 33, 0.7);
+    transform: scale(1.05);
+    cursor: pointer;
+}
+
+/* Start and Destination */
+.start, .destination {
+    font-weight: bold;
+}
+
+/* Route Arrow */
+.route-arrow {
+    font-size: 1.2rem;
+    margin: 0 10px;
+}
+
+/* No Routes Message */
+.no-routes {
+    color: white;
+    font-size: 1rem;
+    text-align: center;
+    margin-top: 20px;
+}
+
+/* Error Message */
+.error-message {
+    color: red;
+    font-size: 1rem;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+/* Responsive Design */
+@media only screen and (max-width: 600px) {
+    .route-tile {
+        width: 100%;
+        font-size: 0.9rem;
+        padding: 12px;
+    }
+
+    .route-arrow {
+        font-size: 1rem;
+    }
+}
