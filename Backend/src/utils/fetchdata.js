@@ -37,21 +37,8 @@ async function addUser(req, res) { //for signup, checks if email already exists
 async function deleteUser(email) {
     res.json({ message: "Status Pending" });
 }
-async function fetchSavedRoutes(req, res) {   
-    try{ //send the user email as parameter
-        const response=await Route.findOne({person: req.params.user}); 
-        if(!response || !response.routes){ //checks if user added any routes before
-            return res.status(404).json({ message: "No routes found" });
-            // return res.json(response);
-        }
-        return res.json(response);//sends the array of routes
-    }
-    catch{
-        res.status(500).json({ message: "Server error" });
-    }
-}
     
 async function addRoutes(req,res){
     res.json({status: "Under development"})
 }
-export {findUserByEmail, addUser, deleteUser,fetchSavedRoutes,addRoutes};
+export {findUserByEmail, addUser, deleteUser,addRoutes};

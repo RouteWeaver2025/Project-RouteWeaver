@@ -84,12 +84,14 @@
 .hover-left {
   left: calc(100% + 10px); /* Move to the right of the dot */
   top: 50%;
+  bottom: 50%;
   transform: translateY(-50%);
 }
 
 .hover-right {
   right: calc(100% + 10px); /* Move to the left of the dot */
   top: 50%;
+  bottom: 50%;
   transform: translateY(-50%);
 }
 
