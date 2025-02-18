@@ -1,10 +1,12 @@
 import express from 'express';
+import cors from 'cors';
 import { router } from './src/routes/login.js';
 import {saver} from './src/routes/savedroutes.js';
 import {newr} from './src/routes/creation.js';
 import {homr} from './src/routes/home.js';
 const app = express();
 const PORT = 5000;
+app.use(cors());
 app.use(express.json());
 
 app.use("/user",router); //handles all routes starting with /user
