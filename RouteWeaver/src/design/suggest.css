@@ -1,119 +1,163 @@
 .timeline-container {
-    width: 100%;
-    max-width: 800px;
-    margin: 2rem auto;
-    position: relative;
-  }
-  
-  .timeline-line {
-    position: absolute;
-    left: 50%;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    background: #ccc;
-    transform: translateX(-50%);
-  }
-  
-  .timeline-item {
-    display: flex;
-    width: 100%;
-    margin-bottom: 2rem;
-  }
-  
-  .left {
-    justify-content: flex-start;
-  }
-  
-  .right {
-    justify-content: flex-end;
-  }
-  
-  .timeline-content {
-    width: 50%;
-    position: relative;
-  }
-  
-  .dot {
-    width: 10px;
-    height: 10px;
-    background: blue;
-    border-radius: 50%;
-    position: absolute;
-    top: 0;
-    cursor: pointer;
-  }
-  
-  .dot-left {
-    right: -5px;
-  }
-  
-  .dot-right {
-    left: -5px;
-  }
-  
-  .hover-box {
-    position: absolute;
-    top: 0;
-    width: 200px;
-    background: white;
-    padding: 10px;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    transition: all 0.3s ease-in-out;
-  }
-  
-  .hover-left {
-    left: 0;
-  }
-  
-  .hover-right {
-    right: 0;
-  }
-  
-  .hover-box img {
-    width: 100%;
-    height: 100px;
-    object-fit: cover;
-    border-radius: 5px;
-    margin-bottom: 5px;
-  }
-  
-  .button-group {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 10px;
-  }
-  
-  .accept,
-  .decline {
-    display: flex;
-    align-items: center;
-    padding: 5px 10px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 14px;
-    color: white;
-    border: none;
-  }
-  
-  .accept {
-    background: green;
-  }
-  
-  .accept:hover {
-    background: darkgreen;
-  }
-  
-  .decline {
-    background: red;
-  }
-  
-  .decline:hover {
-    background: darkred;
-  }
-  
-  .icon {
-    margin-right: 5px;
-  }
-  
+  width: 100vw;
+  height: 100vh;
+  /* max-height:max-content; */
+  /* Increase the max-width to make it bigger */
+  margin:0;
+  padding:0;
+  /* overflow: hidden; */
+  position: relative;
+  background-image: url(../assets/road.jpg);
+  background-size: cover;
+  background-position: center;
+}
+
+.timeline-line {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  /* Increase the width of the line */
+  background-color: rgba(211, 196, 196, 0.5); 
+  backdrop-filter: blur(10px);
+  transform: translateX(-50%);
+}
+
+.timeline-item {
+  display: flex;
+  width: 100%;
+  margin-bottom: 4rem;
+  /* Increase the margin-bottom to increase gaps */
+}
+
+.left {
+  justify-content: flex-start;
+}
+
+.right {
+  justify-content: flex-end;
+}
+
+.timeline-content {
+  width: 60%;
+  /* Increase the width of the content */
+  position: relative;
+}
+
+.dot {
+  width: 30px;
+  /* Increase the size of the dot */
+  height: 30px;
+  /* Increase the size of the dot */
+  background: #bfa6a2;
+  border-radius: 50%;
+  position: absolute;
+  top: 0;
+  cursor: pointer;
+}
+
+.dot-left {
+  right: 85px;
+  /* Adjust the position based on new dot size */
+}
+
+.dot-right {
+  left: 85px;
+  /* Adjust the position based on new dot size */
+}
+
+.hover-box {
+  position: absolute;
+  top: 0;
+  width: 240px;
+  /* Increase the width of the hover box */
+  background: rgba(0, 0, 0, 0.5); 
+  backdrop-filter: blur(5px); 
+  color: white;
+  padding: 10px;
+  border-radius: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease-in-out;
+}
+
+.hover-left {
+  left: calc(100% + 10px); /* Move to the right of the dot */
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.hover-right {
+  right: calc(100% + 10px); /* Move to the left of the dot */
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.hover-box img {
+  width: 100%;
+  height: 120px;
+  /* Increase the height of the image */
+  object-fit: cover;
+  border-radius: 5px;
+  margin-bottom: 5px;
+}
+
+.button-group {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.accept,
+.decline {
+  display: flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  border: none;
+  background: rgba(0, 0, 0, 0.5); 
+  backdrop-filter: blur(5px); 
+  color: white;
+}
+
+.accept {
+  color : green;
+
+}
+
+.accept:hover {
+  background-color: rgba(13, 191, 78, 0.5); 
+  backdrop-filter: blur(5px);
+  color: white;
+}
+
+.decline {
+  color : red;
+}
+
+.decline:hover {
+  background-color: red;
+  backdrop-filter: blur(5px);
+  color: white;
+}
+
+.icon {
+  margin-right: 5px;
+}
+.proceed_btn{
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: #007bff; /* Blue color */
+  color: white;
+  padding: 12px 20px;
+  font-size: 16px;
+  font-weight: bold;
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}

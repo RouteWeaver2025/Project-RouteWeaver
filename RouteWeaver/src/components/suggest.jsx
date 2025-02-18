@@ -1,76 +1,33 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import { FaCheck, FaTimes } from "react-icons/fa";
 import "../design/suggest.css";
-import axios from 'axios';
 
-const timelineData = [
-  {
-    id: 1,
-    title: "Mountain Trek",
-    description: "Adventure through the Himalayas",
-    date: "2024-01-15",
-    image: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b",
-  },
-  {
-    id: 2,
-    title: "Desert Safari",
-    description: "Expedition in the Sahara",
-    date: "2024-02-20",
-    image: "https://images.unsplash.com/photo-1509316785289-025f5b846b35",
-  },
-  {
-    id: 3,
-    title: "Ocean Voyage",
-    description: "Pacific Ocean Exploration",
-    date: "2024-03-25",
-    image: "https://images.unsplash.com/photo-1505118380757-91f5f5632de0",
-  },
-  {
-    id: 4,
-    title: "Forest Trail",
-    description: "Amazon Rainforest Journey",
-    date: "2024-04-30",
-    image: "https://images.unsplash.com/photo-1511497584788-876760111969",
-  },
-  {
-    id: 5,
-    title: "Forest Amazon",
-    description: "Amazon Rainforest Journey",
-    date: "2024-04-30",
-    image: "https://images.unsplash.com/photo-1511497584788-876760111969",
-  },
-];
-
-const TimelineItem = ({ item, isLeft }) => {
-  const [isHovered, setIsHovered] = useState(false);
+const TimelineItem = ({ item, isLeft, onAccept, onDecline, index, openedHoverBox, setOpenedHoverBox }) => {
+  const isHovered = openedHoverBox === index;
 
   return (
     <div className={`timeline-item ${isLeft ? "left" : "right"}`}>
       <div
         className="timeline-content"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        onClick={() => setOpenedHoverBox(isHovered ? null : index)} // Toggle the hover box
       >
         <div className={`dot ${isLeft ? "dot-left" : "dot-right"}`} />
-
         {isHovered && (
           <div className={`hover-box ${isLeft ? "hover-left" : "hover-right"}`}>
-            <h3>{item.title}</h3>
+            <h3>{item.name}</h3>
             <img
               src={item.image}
-              alt={item.title}
+              alt={item.name}
               loading="lazy"
-              onError={(e) =>
-                (e.target.src =
-                  "https://images.unsplash.com/photo-1594322436404-5a0526db4d13")
-              }
+              onError={(e) => (e.target.src = "https://images.unsplash.com/photo-1594322436404-5a0526db4d13")}
             />
-            <p>{item.description}</p>
             <div className="button-group">
-              <button className="accept" aria-label={`Accept ${item.title}`}>
+              <button className="accept" onClick={() => onAccept(item.name)}>
                 <FaCheck className="icon" />
               </button>
-              <button className="decline" aria-label={`Decline ${item.title}`}>
+              <button className="decline" onClick={() => onDecline(item.name)}>
                 <FaTimes className="icon" />
               </button>
             </div>
@@ -82,29 +39,74 @@ const TimelineItem = ({ item, isLeft }) => {
 };
 
 const Timeline = () => {
-//   try{
-//     const location=sessionStorage.getItem("location");
-//     const destination=sessionStorage.getItem("destination");
-//     const response= axios.get("/suggest", {
-//       params: {
-//         location: location,
-//         destination: destination
-//       }
-//     });
-//     console.log(response);
-    return (
-      <div className="timeline-container">
-        <div className="timeline-line" />
-        {timelineData.map((item, index) => (
-          <TimelineItem key={item.id} item={item} isLeft={index % 2 === 0} />
-        ))}
-      </div>
-    );
-  // } 
-  // catch (error) {
-  //   console.error(error);
-  // }
-  
+  const [timelineData, setTimelineData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [acceptedLocations, setAcceptedLocations] = useState([]);
+  const [declinedLocations, setDeclinedLocations] = useState([]);
+  const [openedHoverBox, setOpenedHoverBox] = useState(null); // Tracks the currently open hover box
+  const navigate = useNavigate();
+  const location = sessionStorage.getItem("location");
+  const dest = sessionStorage.getItem("destination");
+
+  useEffect(() => {
+    const fetchTimelineData = async () => {
+      try {
+        const response = await axios.get("http://localhost:5000/create", {
+          params: { origin: location, destination: dest },
+        });
+
+        setTimelineData(
+          response.data.places.map((place, index) => ({
+            ...place,
+            image: response.data.images[index] || null,
+            description: "Tourist Attraction",
+          }))
+        );
+      } catch (err) {
+        setError(err);
+        console.error("Error fetching data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTimelineData();
+  }, []);
+
+  const handleAccept = (name) => {
+    setAcceptedLocations([...acceptedLocations, name]);
+  };
+
+  const handleDecline = (name) => {
+    setDeclinedLocations([...declinedLocations, name]);
+  };
+
+  const handleProceed = () => {
+    navigate("/summary", { state: { acceptedLocations } });
+  };
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+
+  return (
+    <div className="timeline-container">
+      <div className="timeline-line" />
+      {timelineData.map((item, index) => (
+        <TimelineItem
+          key={item.place_id}
+          item={item}
+          isLeft={index % 2 === 0}
+          onAccept={handleAccept}
+          onDecline={handleDecline}
+          index={index}
+          openedHoverBox={openedHoverBox}
+          setOpenedHoverBox={setOpenedHoverBox}
+        />
+      ))}
+      <button className="proceed-btn" onClick={handleProceed}>Proceed to Summary</button>
+    </div>
+  );
 };
 
 export default Timeline;
