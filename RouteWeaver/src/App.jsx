@@ -22,9 +22,9 @@ const AppWrapper = () => {
     else if(location.pathname==="/suggestions"){
       setPageClass("timeline-container");}
      else if(location.pathname==="/saver"){
-       setPageClass("timeline-container");}
+       setPageClass("saver-container");}
     else if(location.pathname==="/summary"){
-      setPageClass("timeline-container");
+      setPageClass("summary-container");
     }
     else {
       setPageClass(""); // Default class for other pages

@@ -1,4 +1,4 @@
-async function fetchSavedRoutes( req, res) {   
+function fetchSavedRoutes( req, res) {   
     const response = {
         1: {
             origin: "Kochi",
