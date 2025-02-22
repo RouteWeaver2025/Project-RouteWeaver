@@ -139,7 +139,8 @@ const HomePage = () => {
               onClick={() => navigate('/queries')} >{/*New Route button*/}
               <h4>New Route</h4>
             </div>
-            <div role="button" className="SavedR">
+            <div role="button" className="SavedR"
+            onClick={() => navigate('/saver')}>
               <h4>Saved Route</h4>
             </div>
           </div>
