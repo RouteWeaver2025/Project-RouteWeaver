@@ -6,6 +6,7 @@ import Timeline from './components/suggest';
 import Summary from './components/summary';
 import Questions from './components/query';
 import SavedRoutes from './components/saver';
+import TravelPackage from './components/travelpackage';
 
 
 const AppWrapper = () => {
@@ -26,6 +27,9 @@ const AppWrapper = () => {
     else if(location.pathname==="/summary"){
       setPageClass("summary-container");
     }
+    else if(location.pathname==="/packages"){
+      setPageClass("package-container");
+    }
     else {
       setPageClass(""); // Default class for other pages
     }
@@ -40,6 +44,7 @@ const AppWrapper = () => {
         <Route path="/queries" element={<Questions />} /> 
         <Route path="/saver" element={<SavedRoutes />} /> 
         <Route path="/summary" element={<Summary />} />
+        <Route path="/packages" element={<TravelPackage />} /> 
       </Routes>
     </div>
   );

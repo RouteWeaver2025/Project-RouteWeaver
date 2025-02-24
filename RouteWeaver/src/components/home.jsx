@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 
 // HomePage component
 const HomePage = () => {
-  const navigate = useNavigate();
+  const navigate = useNavigate();           
   const [userName, setUserName] = useState("");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [menuOpen, setMenuOpen] = useState(false); // State to toggle the menu
