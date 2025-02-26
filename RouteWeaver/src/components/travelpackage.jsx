@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { FaPlane, FaFacebookF, FaTwitter, FaInstagram, FaMapMarkerAlt, FaUserCircle } from 'react-icons/fa';
+import { FaBold, FaUserCircle } from 'react-icons/fa';
 import { IoLocationSharp } from 'react-icons/io5';
 import '../design/travelpackage.css';
+import { useNavigate } from 'react-router-dom';
 
 const TravelPackage = () => {
+  const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
@@ -25,17 +27,16 @@ const TravelPackage = () => {
   };
 
   return (
-    <div className="package-container">
+    <>
       <nav className={`navbar ${isScrolled ? 'scrolled' : ''}`}>
-        <div className="logo">
-          <FaPlane className="logo-icon" />
-          <span>RouteWeaver</span>
+        <div>
+          <button id="name" onClick={() => navigate('/home')}>RouteWeaver</button>
         </div>
         <div className="nav-links">
-          <a href="#home">Home</a>
-          <FaUserCircle 
-            size={24} 
-            className="profile-icon" 
+          <a href="/home"><h4>Home</h4></a>
+          <FaUserCircle
+            size={24}
+            className="profile-icon"
             onClick={() => setShowProfileMenu(!showProfileMenu)}
           />
           {showProfileMenu && (
@@ -54,13 +55,13 @@ const TravelPackage = () => {
       <div className="location-search-container">
         <div className="location-search-wrapper">
           <div className="search-box">
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="Search destinations..."
               className="search-input"
             />
           </div>
-          <button 
+          <button
             className="current-location-btn"
             onClick={handleLocationClick}
           >
@@ -102,7 +103,7 @@ const TravelPackage = () => {
           </div>
 
           <div className="package-card">
-            <div className="card-image" style={{backgroundImage: `url('https://images.unsplash.com/photo-1512100356356-de1b84283e18?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')`}}></div>
+            <div className="card-image" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1512100356356-de1b84283e18?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')` }}></div>
             <div className="card-content">
               <h3>Desert Safari Adventure</h3>
               <p>Experience the thrill of desert dunes and traditional Bedouin culture.</p>
@@ -111,7 +112,7 @@ const TravelPackage = () => {
           </div>
 
           <div className="package-card">
-            <div className="card-image" style={{backgroundImage: `url('https://images.unsplash.com/photo-1534008757030-27299c4371b6?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')`}}></div>
+            <div className="card-image" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1534008757030-27299c4371b6?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')` }}></div>
             <div className="card-content">
               <h3>Island Hopping Tour</h3>
               <p>Explore multiple pristine islands and discover hidden beaches.</p>
@@ -120,7 +121,7 @@ const TravelPackage = () => {
           </div>
 
           <div className="package-card">
-            <div className="card-image" style={{backgroundImage: `url('https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')`}}></div>
+            <div className="card-image" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')` }}></div>
             <div className="card-content">
               <h3>Rainforest Expedition</h3>
               <p>Discover exotic wildlife and ancient ecosystems in pristine rainforests.</p>
@@ -161,7 +162,7 @@ const TravelPackage = () => {
           </div>
 
           <div className="package-card">
-            <div className="card-image" style={{backgroundImage: `url('https://images.unsplash.com/photo-1512100356356-de1b84283e18?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')`}}></div>
+            <div className="card-image" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1512100356356-de1b84283e18?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')` }}></div>
             <div className="card-content">
               <h3>Desert Safari Adventure</h3>
               <p>Experience the thrill of desert dunes and traditional Bedouin culture.</p>
@@ -170,7 +171,7 @@ const TravelPackage = () => {
           </div>
 
           <div className="package-card">
-            <div className="card-image" style={{backgroundImage: `url('https://images.unsplash.com/photo-1534008757030-27299c4371b6?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')`}}></div>
+            <div className="card-image" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1534008757030-27299c4371b6?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')` }}></div>
             <div className="card-content">
               <h3>Island Hopping Tour</h3>
               <p>Explore multiple pristine islands and discover hidden beaches.</p>
@@ -179,7 +180,7 @@ const TravelPackage = () => {
           </div>
 
           <div className="package-card">
-            <div className="card-image" style={{backgroundImage: `url('https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')`}}></div>
+            <div className="card-image" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')` }}></div>
             <div className="card-content">
               <h3>Rainforest Expedition</h3>
               <p>Discover exotic wildlife and ancient ecosystems in pristine rainforests.</p>
@@ -190,7 +191,7 @@ const TravelPackage = () => {
       </section>
 
 
-      <footer className="footer">
+      {/* <footer className="footer">
         <div className="footer-content">
           <div className="contact-info">
             <h3>Contact Us</h3>
@@ -212,8 +213,8 @@ const TravelPackage = () => {
             </div>
           </div>
         </div>
-      </footer>
-    </div>
+      </footer> */}
+    </>
   );
 };
 
