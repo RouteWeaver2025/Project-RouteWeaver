@@ -24,10 +24,10 @@ const TimelineItem = ({ item, isLeft, onAccept, onDecline, index, openedHoverBox
               onError={(e) => (e.target.src = "https://images.unsplash.com/photo-1594322436404-5a0526db4d13")}
             />
             <div className="button-group">
-              <button className="accept" onClick={() => onAccept(item.name)}>
+              <button className="accept" onClick={() => onAccept(item)}>
                 <FaCheck className="icon" />
               </button>
-              <button className="decline" onClick={() => onDecline(item.name)}>
+              <button className="decline" onClick={() => onDecline(item)}>
                 <FaTimes className="icon" />
               </button>
             </div>
@@ -55,14 +55,13 @@ const Timeline = () => {
         const response = await axios.get("http://localhost:5000/create", {
           params: { origin: location, destination: dest },
         });
-
-        setTimelineData(
-          response.data.places.map((place, index) => ({
-            ...place,
-            image: response.data.images[index] || null,
-            description: "Tourist Attraction",
-          }))
-        );
+        const fetchedData = response.data.places.map((place, index) => ({
+          ...place,
+          image: response.data.images[index] || null,
+          description: "Tourist Attraction",
+        }));
+  
+        setTimelineData(fetchedData);
       } catch (err) {
         setError(err);
         console.error("Error fetching data:", err);
@@ -74,8 +73,8 @@ const Timeline = () => {
     fetchTimelineData();
   }, []);
 
-  const handleAccept = (name) => {
-    setAcceptedLocations([...acceptedLocations, name]);
+  const handleAccept = (item) => {
+    setAcceptedLocations([...acceptedLocations, item]);
   };
 
   const handleDecline = (name) => {

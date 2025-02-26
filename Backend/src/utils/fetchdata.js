@@ -1,5 +1,4 @@
 import {User} from "../models/user.js";
-import {Route} from "../models/routes.js";
 import bcrypt from "bcryptjs";
 async function findUserByEmail(req, res){ //checks email then password
     try {
@@ -38,7 +37,4 @@ async function deleteUser(email) {
     res.json({ message: "Status Pending" });
 }
     
-async function addRoutes(req,res){
-    res.json({status: "Under development"})
-}
-export {findUserByEmail, addUser, deleteUser,addRoutes};
+export {findUserByEmail, addUser, deleteUser};

@@ -1,5 +1,6 @@
 import express from "express";
 import {fetchSavedRoutes} from "../utils/fetchroute.js";
+import { addRoute } from "../utils/saveroute.js";
 // import {getTravelSummary} from "../utils/summary.js";
 
 const saver=express.Router();
@@ -10,6 +11,9 @@ saver
     .route('/')
     .get(fetchSavedRoutes)
 
+saver
+    .route('/save')
+    .post(addRoute)
 // saver
     // .route('/:id')
     // .get(getTravelSummary)

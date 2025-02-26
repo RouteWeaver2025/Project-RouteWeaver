@@ -1,5 +1,4 @@
 import express from 'express';
-import {addRoutes} from '../utils/fetchdata.js';
 import { getRouteWithTouristSpots } from '../utils/landmarks.js';
 // import {summarizer} from '../utils/summmary.js';
 
