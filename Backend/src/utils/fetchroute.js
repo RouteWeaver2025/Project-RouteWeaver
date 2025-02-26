@@ -1,15 +1,20 @@
 function fetchSavedRoutes( req, res) {   
-    const response = {
-        1: {
-            origin: "Kochi",
-            destination: "Trivandrum"
-        },
-        2: {
-            origin: "Kanjirappally",
-            destination: "Kochi"
+    const {email} = req.body;
+    if(email==='aadya@gmail.com'){
+        const response = {
+            1: {
+                origin: "Kochi",
+                destination: "Trivandrum"
+            },
+            2: {
+                origin: "Kanjirappally",
+                destination: "Kochi"
+            }
         }
+        return res.json(response);
     }
-    return res.json(response);
+    
+    
 }
 function parseRoutes(req){
     const {person, routes}=req.body;

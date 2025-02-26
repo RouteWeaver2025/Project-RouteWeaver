@@ -9,7 +9,7 @@ app.use(express.json());
 
 saver
     .route('/')
-    .get(fetchSavedRoutes)
+    .post(fetchSavedRoutes)
 
 saver
     .route('/save')

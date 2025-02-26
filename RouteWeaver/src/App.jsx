@@ -5,7 +5,7 @@ import HomePage from './components/home';
 import Timeline from './components/suggest';
 import Summary from './components/summary';
 import Questions from './components/query';
-import SavedRoutes from './components/saver';
+import SavedRoutes from './components/SavedRoutes';
 import TravelPackage from './components/travelpackage';
 
 
