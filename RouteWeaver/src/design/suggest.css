@@ -27,7 +27,13 @@
   transform: translateX(-50%);
 }
 
-/* Individual timeline items */
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh; /* Adjust based on your layout */
+}
+
 .timeline-item {
   display: flex;
   width: 100%;

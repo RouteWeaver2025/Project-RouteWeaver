@@ -272,6 +272,57 @@ function formatLocation(waypoint) {
     return `${waypoint.landmark}, ${waypoint.state}, ${waypoint.country}`; // Default format
 }
 
+async function getOD(routeData) {
+    try {
+        const decodedPoints =  decodePolyline(routeData);
+        const origin= await getName(decodedPoints[0].lat,decodedPoints[0].lng);
+        const destination= await getName(decodedPoints[decodedPoints.length-1].lat,decodedPoints[decodedPoints.length-1].lng);
+        return { origin, destination };
 
+    } catch (error) {
+        console.error("Error in getOD:", error.message);
+        throw error;
+    }
+}
+async function getName(lat, lng) {
+    try {
+        const response = await client.reverseGeocode({
+            params: {
+                latlng: `${lat},${lng}`,
+                key: apiKey,
+            },
+        });
+
+        if (response && response.data && response.data.plus_code && response.data.plus_code.compound_code) {
+            const compoundCode = response.data.plus_code.compound_code;
+
+            const cityMatch = compoundCode.match(/([A-Za-z\s.'-]+)(?:,\s*[A-Za-z\s.'-]+)?,\s*[A-Za-z\s.'-]+(?:,\s*[A-Za-z\s.'-]+)?$/);
+
+            if (cityMatch && cityMatch[1]) {
+                let cityName = cityMatch[1].trim();
+
+                // Filter out leading plus code parts (including single letters)
+                cityName = cityName.replace(/^[A-Z0-9]+\s/, "");
+
+                if (cityName.length > 2) {
+                    console.log("name:", cityName);
+                    return cityName;
+                } else {
+                    console.log("Could not find a valid city name.");
+                    return "Unknown";
+                }
+            } else {
+                console.log("Could not find city name.");
+                return "Unknown";
+            }
+        } else {
+            console.log("Geocoding failed or compound_code not found.");
+            return null;
+        }
+    } catch (error) {
+        console.error("Error in getName:", error);
+        return null;
+    }
+}
 // Test the function
-export { getRouteWithTouristSpots, getEntireRoute };
+export { getRouteWithTouristSpots, getEntireRoute ,getOD};

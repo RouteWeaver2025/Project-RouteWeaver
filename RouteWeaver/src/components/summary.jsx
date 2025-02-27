@@ -9,6 +9,8 @@ const Summary = () => {
   const acceptedLocations = location.state?.acceptedLocations || [];
 
   const [waypoints, setWaypoints] = useState(acceptedLocations);
+  const origin= sessionStorage.getItem('location');
+  const destination = sessionStorage.getItem('destination');
 
   const handleDelete = (index) => {
     setWaypoints(waypoints.filter((_, i) => i !== index));
@@ -55,7 +57,7 @@ const Summary = () => {
     <div className="summary-container">
       <button id="name" onClick={() => navigate('/home')}>RouteWeaver</button>
       <button className="edit-btn" onClick={() => navigate('/suggestions')}>✏️ Edit</button>
-      <h2 className="start-address">Starting Address: New York, NY</h2>
+      <h2 className="start-address">{origin || "Origin not set"}</h2>
       <div className="waypoints-list">
         {waypoints.length > 0 ? (
           waypoints.map((waypoint, index) => (
@@ -70,7 +72,7 @@ const Summary = () => {
           <p className="empty-message">No waypoints added yet.</p>
         )}
       </div>
-      <h2 className="destination-address">Destination: Los Angeles, CA</h2>
+      <h2 className="destination-address">{destination || "Origin not set"}</h2>
       <div className="bottom-buttons">
         <button className="navigate-btn">📍 Navigate</button>
         <button className="save-btn" onClick={handleSave}>💾 Save</button>

@@ -2,10 +2,52 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { FaCheck, FaTimes } from "react-icons/fa";
+import {Triangle} from 'react-loader-spinner';
 import "../design/suggest.css";
 
+// const TimelineItem = ({ item, isLeft, onAccept, onDecline, index, openedHoverBox, setOpenedHoverBox }) => {
+//   const isHovered = openedHoverBox === index;
+
+//   return (
+//     <div className={`timeline-item ${isLeft ? "left" : "right"}`}>
+//       <div
+//         className="timeline-content"
+//         onClick={() => setOpenedHoverBox(isHovered ? null : index)} // Toggle the hover box
+//       >
+//         <div className={`dot ${isLeft ? "dot-left" : "dot-right"}`} />
+//         {isHovered && (
+//           <div className={`hover-box ${isLeft ? "hover-left" : "hover-right"}`}>
+//             <h3>{item.name}</h3>
+//             <img
+//               src={item.image}
+//               alt={item.name}
+//               loading="lazy"
+//               onError={(e) => (e.target.src = "https://images.unsplash.com/photo-1594322436404-5a0526db4d13")}
+//             />
+//             <div className="button-group">
+//               <button className="accept" onClick={() => onAccept(item)}>
+//                 <FaCheck className="icon" />
+//               </button>
+//               <button className="decline" onClick={() => onDecline(item)}>
+//                 <FaTimes className="icon" />
+//               </button>
+//             </div>
+//           </div>
+//         )}
+//       </div>
+//     </div>
+//   );
+// };
 const TimelineItem = ({ item, isLeft, onAccept, onDecline, index, openedHoverBox, setOpenedHoverBox }) => {
   const isHovered = openedHoverBox === index;
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+<img
+  src={item.image}
+  alt={item.name}
+  className={imageLoaded ? "loaded" : ""}
+  onLoad={() => setImageLoaded(true)}
+/>
 
   return (
     <div className={`timeline-item ${isLeft ? "left" : "right"}`}>
@@ -17,12 +59,20 @@ const TimelineItem = ({ item, isLeft, onAccept, onDecline, index, openedHoverBox
         {isHovered && (
           <div className={`hover-box ${isLeft ? "hover-left" : "hover-right"}`}>
             <h3>{item.name}</h3>
-            <img
-              src={item.image}
-              alt={item.name}
-              loading="lazy"
-              onError={(e) => (e.target.src = "https://images.unsplash.com/photo-1594322436404-5a0526db4d13")}
-            />
+            <div className="image-container" style={{ backgroundColor: "white" }}>
+              {!imageLoaded && <div className="image-placeholder"></div>}
+              <img
+                src={item.image}
+                alt={item.name}
+                className={`hover-image ${imageLoaded ? "visible" : "hidden"}`}
+                loading="lazy"
+                onLoad={() => setImageLoaded(true)}
+                onError={(e) => {
+                  e.target.src = "https://images.unsplash.com/photo-1594322436404-5a0526db4d13";
+                  setImageLoaded(true);
+                }}
+              />
+            </div>
             <div className="button-group">
               <button className="accept" onClick={() => onAccept(item)}>
                 <FaCheck className="icon" />
@@ -37,6 +87,7 @@ const TimelineItem = ({ item, isLeft, onAccept, onDecline, index, openedHoverBox
     </div>
   );
 };
+
 
 const Timeline = () => {
   const [timelineData, setTimelineData] = useState([]);
@@ -85,7 +136,18 @@ const Timeline = () => {
     navigate("/summary", { state: { acceptedLocations } });
   };
 
-  if (loading) return <div>Loading...</div>;
+  if (loading)
+    return (
+      <div className="loading-container">
+        <Triangle
+          visible={true}
+          height="80"
+          width="80"
+          color="#4fa94d"
+          ariaLabel="triangle-loading"
+        />
+      </div>
+    );
   if (error) return <div>Error: {error.message}</div>;
 
   return (
