@@ -124,7 +124,20 @@ html, body {
     font-size: larger;
   }
   
-
+  .listhead {
+    display: flex;
+    align-items: center;
+    justify-content:center;
+    width: 90%;
+    padding: 15px 20px;
+    /* background: rgba(55, 49, 49, 0.5); */
+    border-radius: 10px;
+    color: white;
+    font-style: italic;
+    font-size: 1.5rem;
+    transition: background 0.3s, transform 0.3s;
+    font-style: italic;
+  }
 /* Routes List */
 .routes-list {
      width: 50%; 
@@ -144,6 +157,7 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    margin-bottom: 15px;
     width: 90%;
     padding: 15px 20px;
     background: rgba(55, 49, 49, 0.5);
@@ -199,6 +213,19 @@ html, body {
     }
     #hero{
         height: 30vh;
+        margin-top: -40px;
+        margin-bottom: -20px;
+    }
+    .listhead{
+      margin-top: -35px;
+      font-size: x-large;
+      padding: 5px;
+    }
+    .routes-list{
+      margin-top: -35px;
+    }
+    .route-tile{
+      width: 300px;
     }
     .saver-container #name{
         top:0px;
