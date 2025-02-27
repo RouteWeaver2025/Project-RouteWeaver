@@ -1,6 +1,6 @@
 function fetchSavedRoutes( req, res) {   
     const {email} = req.body;
-    if(email==='aadya@gmail.com'){
+    if(email!=='aadya@gmail.com'){
         const response = {
             1: {
                 origin: "Kochi",
