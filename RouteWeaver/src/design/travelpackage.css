@@ -174,11 +174,11 @@ body {
   font-size: 16px;
   width: 400px;
   bottom: 9px;
-
+  background-color:#333 ;
 }
 
 .current-location-btn {
-  background: #007bff;
+  background:#333;
   color: white;
   border: none;
   width: auto;
@@ -191,13 +191,14 @@ body {
 }
 
 .current-location-btn:hover {
-  background: #0056b3;
+  background:#333
 }
 
 /* Featured Packages */
 .featured-packages {
   padding: 40px 20px;
   text-align: center;
+  color: lightgray;
 }
 
 .package-grid {
@@ -208,7 +209,7 @@ body {
 }
 
 .package-card {
-  background: white;
+  background: #1a1a1a;;
   border-radius: 10px;
   overflow: hidden;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
@@ -232,11 +233,12 @@ body {
 .card-content h3 {
   font-size: 1.3rem;
   margin-bottom: 8px;
+  color: lightgray;
 }
 
 .card-content p {
   font-size: 0.9rem;
-  color: #555;
+  color: white;
   margin-bottom: 15px;
 }
 
@@ -244,17 +246,17 @@ body {
   display: block;
   width: 100%;
   padding: 10px;
-  background: #007bff;
+  background: #110f0f;
   color: white;
   border: none;
-  border-radius: 5px;
+  border-radius: 20px;
   cursor: pointer;
   font-size: 14px;
   transition: background 0.3s;
 }
 
 .explore-btn:hover {
-  background: #0056b3;
+  background: #737a83;
 }
 
 /* Footer */
