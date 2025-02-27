@@ -1,79 +1,69 @@
+/* Container for the entire timeline */
 .timeline-container {
   width: 100vw;
   height: 100vh;
-  /* max-height:max-content; */
-  /* Increase the max-width to make it bigger */
-  margin:0;
-  padding:0;
-  /* overflow: hidden; */
+  margin: 0;
+  padding: 0;
   position: relative;
   background-image: url(../assets/road.jpg);
   background-size: cover;
   background-position: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
+/* Vertical timeline line in the center */
 .timeline-line {
   position: absolute;
+  display: flex;
+  margin-top: 65px;
   left: 50%;
   top: 0;
   bottom: 0;
   width: 8px;
-  /* Increase the width of the line */
-  background-color: rgba(211, 196, 196, 0.5); 
+  background-color: rgba(211, 196, 196, 0.5);
   backdrop-filter: blur(10px);
   transform: translateX(-50%);
 }
 
+/* Individual timeline items */
 .timeline-item {
   display: flex;
   width: 100%;
   margin-bottom: 4rem;
-  /* Increase the margin-bottom to increase gaps */
-}
-
-.left {
-  justify-content: flex-start;
-}
-
-.right {
-  justify-content: flex-end;
-}
-
-.timeline-content {
-  width: 60%;
-  /* Increase the width of the content */
+  align-items: center;
+  justify-content: center;
   position: relative;
 }
 
+/* Content box of each timeline item */
+.timeline-content {
+  width: 60%;
+  position: relative;
+}
+
+/* Circular dot on the timeline */
 .dot {
-  width: 30px;
-  /* Increase the size of the dot */
-  height: 30px;
-  /* Increase the size of the dot */
+  width: 17px;
+  height: 17px;
+  margin-top:65px;
   background: #bfa6a2;
   border-radius: 50%;
   position: absolute;
-  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
   cursor: pointer;
 }
 
-.dot-left {
-  right: 85px;
-  /* Adjust the position based on new dot size */
-}
-
-.dot-right {
-  left: 85px;
-  /* Adjust the position based on new dot size */
-}
-
+/* Hover box with details about the timeline item */
 .hover-box {
   position: absolute;
   top: 0;
   width: 240px;
-  /* Increase the width of the hover box */
-  background: rgba(0, 0, 0, 0.5); 
-  backdrop-filter: blur(5px); 
+  max-width: 90%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(5px);
   color: white;
   padding: 10px;
   border-radius: 20px;
@@ -81,35 +71,35 @@
   transition: all 0.3s ease-in-out;
 }
 
+/* Positioning hover box */
 .hover-left {
-  left: calc(100% + 10px); /* Move to the right of the dot */
-  top: 50%;
-  bottom: 50%;
+  left: calc(50% + 20px);
   transform: translateY(-50%);
 }
 
 .hover-right {
-  right: calc(100% + 10px); /* Move to the left of the dot */
-  top: 50%;
-  bottom: 50%;
+  right: calc(50% + 20px);
   transform: translateY(-50%);
 }
 
+/* Styling for images inside hover boxes */
 .hover-box img {
   width: 100%;
-  height: 120px;
-  /* Increase the height of the image */
+  height: auto;
+  max-height: 120px;
   object-fit: cover;
   border-radius: 5px;
   margin-bottom: 5px;
 }
 
+/* Button group inside hover box */
 .button-group {
   display: flex;
   justify-content: space-between;
   margin-top: 10px;
 }
 
+/* Accept and Decline buttons */
 .accept,
 .decline {
   display: flex;
@@ -119,47 +109,89 @@
   cursor: pointer;
   font-size: 14px;
   border: none;
-  background: rgba(0, 0, 0, 0.5); 
-  backdrop-filter: blur(5px); 
-  color: white;
-}
-
-.accept {
-  color : green;
-
-}
-
-.accept:hover {
-  background-color: rgba(13, 191, 78, 0.5); 
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(5px);
   color: white;
 }
 
-.decline {
-  color : red;
-}
+.accept { color: green; }
+.accept:hover { background-color: rgba(13, 191, 78, 0.5); color: white; }
+.decline { color: red; }
+.decline:hover { background-color: red; color: white; }
 
-.decline:hover {
-  background-color: red;
-  backdrop-filter: blur(5px);
-  color: white;
-}
-
-.icon {
-  margin-right: 5px;
-}
-.proceed_btn{
-  position: fixed;
+/* Proceed button fixed at bottom-right corner */
+.proceed-btn {
+  position: absolute;
   bottom: 20px;
   right: 20px;
-  background-color: #007bff; /* Blue color */
-  color: white;
-  padding: 12px 20px;
-  font-size: 16px;
+  width: 300px;
+  background-color: #007bff;
+  color: rgb(255, 255, 255);
+  padding: 10px 16px;
+  font-size: 14px;
   font-weight: bold;
   border: none;
-  border-radius: 10px;
+  border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   cursor: pointer;
   transition: all 0.3s ease-in-out;
+}
+
+/* Downward arrow at the end of the timeline */
+.timeline-arrow {
+  position: absolute;
+  left: 50%;
+  bottom: -30px;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-top: 16px solid #bfa6a2;
+}
+
+/* Responsive adjustments */
+@media only screen and (max-width: 768px) {
+  .hover-box {
+    width: 85%;
+    font-size: 12px;
+    padding: 8px;
+  }
+  .hover-box img { max-height: 100px; }
+  .proceed_btn {
+    bottom: 15px;
+    right: 15px;
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+}
+
+@media only screen and (max-width: 480px) {
+  .hover-box {
+    max-width: 150px;
+    font-size: 10px;
+    padding: 6px;
+  }
+  .hover-box img { max-height: 80px; }
+  .proceed_btn {
+    bottom: 10px;
+    right: 10px;
+    padding: 6px 12px;
+    font-size: 10px;
+  }
+}
+
+@media only screen and (max-width: 320px) {
+  .hover-box {
+    max-width: 120px;
+    font-size: 8px;
+    padding: 5px;
+  }
+  .hover-box img { max-height: 60px; }
+  .proceed_btn {
+    bottom: 5px;
+    right: 5px;
+    padding: 5px 10px;
+    font-size: 8px;
+  }
 }
