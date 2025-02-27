@@ -1,32 +1,37 @@
 /* General styles */
-html, body {
+html,
+body {
   height: 100%;
   overflow-y: auto;
   background-color: #f5f5f5;
   font-family: 'Arial', sans-serif;
 }
+
 .package-container {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   background-color: #110f0f;
   color: #333;
 }
-.package-container #name{
-  width:fit-content;  
+
+.package-container #name {
+  width: fit-content;
   position: absolute;
-  display:flex;
-  top:0px;
+  display: flex;
+  top: 0px;
   left: 20px;
   z-index: 1000;
-  background-color:transparent;
-  border:none;
+  background-color: transparent;
+  border: none;
   color: white;
-  cursor:pointer;
+  cursor: pointer;
 }
-#name:hover{
+
+#name:hover {
   color: #da9e48;
   /* background: rgba(0, 0, 0, 0.5); 
   backdrop-filter: blur(5px);  */
 }
+
 /* Navbar */
 .navbar {
   display: flex;
@@ -121,11 +126,14 @@ html, body {
   text-align: center;
 } */
 .hero {
-  height: 50vh; /* Full screen */
+  height: 50vh;
+  /* Full screen */
   display: flex;
   background-image: url(../assets/roadtrip.jpg);
   background-size: cover;
-  background-position:center;
+  background-position: center;
+
+  filter: brightness(40%);
   /* align-items: center;
   justify-content: center; */
   color: white;
@@ -136,34 +144,44 @@ html, body {
 .location-search-container {
   display: flex;
   justify-content: center;
-  margin-top: -30px;
+  bottom: 0.2px;
 }
 
+
 .location-search-wrapper {
-  background: rgb(46, 45, 45);
+  background: #110f0f;
   padding: 10px;
   display: flex;
   align-items: center;
   width: 500px;
   border-radius: 8px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  /* box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); */
+
+}
+
+.search-box {
+  flex: 1;
+  position: relative;
+  
 }
 
 .search-input {
   display: flex;
   border: none;
   outline: none;
-  margin: auto 10px; 
-  padding: 10px;
+  margin-right: 10px;
+  padding: 13px;
   font-size: 16px;
-  width: 250px;
+  width: 400px;
+  bottom: 9px;
+
 }
 
 .current-location-btn {
   background: #007bff;
   color: white;
   border: none;
-  width:auto;
+  width: auto;
   padding: 8px 12px;
   cursor: pointer;
   border-radius: 5px;
@@ -275,23 +293,23 @@ html, body {
 /* Responsive Design */
 @media (max-width: 768px) {
   .navbar {
-      padding: 10px 20px;
+    padding: 10px 20px;
   }
 
   .nav-links a {
-      margin: 0 10px;
+    margin: 0 10px;
   }
 
   .location-search-wrapper {
-      width: 90%;
+    width: 90%;
   }
 
   .search-input {
-      width: 100%;
+    width: 100%;
   }
 
   .footer-content {
-      flex-direction: column;
-      text-align: center;
+    flex-direction: column;
+    text-align: center;
   }
 }
