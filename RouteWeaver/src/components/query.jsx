@@ -78,7 +78,7 @@ function Questions() {
           <div>
             <div className="options">
               <button id="custom" onClick={handleNext}>Custom</button>
-              <button id="pkg">Travel Package</button>
+              <button id="pkg" onClick={() => navigate('/packages')}>Travel Package</button>
             </div>
             <div className="move">
               <button id="back" onClick={handleBack}></button>
