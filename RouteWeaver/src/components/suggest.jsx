@@ -1,86 +1,123 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { FaCheck, FaTimes } from "react-icons/fa";
-import {Triangle} from 'react-loader-spinner';
 import "../design/suggest.css";
 
-// const TimelineItem = ({ item, isLeft, onAccept, onDecline, index, openedHoverBox, setOpenedHoverBox }) => {
-//   const isHovered = openedHoverBox === index;
+const SuggestPage = () => {
+  const navigate = useNavigate();
 
-//   return (
-//     <div className={`timeline-item ${isLeft ? "left" : "right"}`}>
-//       <div
-//         className="timeline-content"
-//         onClick={() => setOpenedHoverBox(isHovered ? null : index)} // Toggle the hover box
-//       >
-//         <div className={`dot ${isLeft ? "dot-left" : "dot-right"}`} />
-//         {isHovered && (
-//           <div className={`hover-box ${isLeft ? "hover-left" : "hover-right"}`}>
-//             <h3>{item.name}</h3>
-//             <img
-//               src={item.image}
-//               alt={item.name}
-//               loading="lazy"
-//               onError={(e) => (e.target.src = "https://images.unsplash.com/photo-1594322436404-5a0526db4d13")}
-//             />
-//             <div className="button-group">
-//               <button className="accept" onClick={() => onAccept(item)}>
-//                 <FaCheck className="icon" />
-//               </button>
-//               <button className="decline" onClick={() => onDecline(item)}>
-//                 <FaTimes className="icon" />
-//               </button>
-//             </div>
-//           </div>
-//         )}
-//       </div>
-//     </div>
-//   );
-// };
-const TimelineItem = ({ item, isLeft, onAccept, onDecline, index, openedHoverBox, setOpenedHoverBox }) => {
-  const isHovered = openedHoverBox === index;
-  const [imageLoaded, setImageLoaded] = useState(false);
+  // State for routes, selected route index, hovered place
+  const [routesData, setRoutesData] = useState([]);
+  const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
+  const [hoveredPlace, setHoveredPlace] = useState(null);
 
-<img
-  src={item.image}
-  alt={item.name}
-  className={imageLoaded ? "loaded" : ""}
-  onLoad={() => setImageLoaded(true)}
-/>
+  // Retrieve origin, destination, and selectedKeywords from sessionStorage
+  const origin = sessionStorage.getItem("location");
+  const destination = sessionStorage.getItem("destination");
+  const selectedKeywords = JSON.parse(sessionStorage.getItem("selectedKeywords") || "[]");
+
+  // Number emojis to label routes 1, 2, 3, ...
+  const numberEmojis = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣"];
+
+  // Fetch route data on mount
+  useEffect(() => {
+    axios
+      .get("http://localhost:5000/create", {
+        params: {
+          origin,
+          destination,
+          // Convert the array to a JSON string to pass as query param
+          selectedKeywords: JSON.stringify(selectedKeywords)
+        }
+      })
+      .then(response => {
+        if (response.data && response.data.routes) {
+          setRoutesData(response.data.routes);
+          setSelectedRouteIndex(0); // Default to first route
+        }
+      })
+      .catch(error => {
+        console.error("Error fetching routes:", error);
+      });
+  }, [origin, destination, selectedKeywords]);
+
+  // The currently selected route’s data
+  const selectedRouteData = routesData[selectedRouteIndex] || null;
 
   return (
-    <div className={`timeline-item ${isLeft ? "left" : "right"}`}>
-      <div
-        className="timeline-content"
-        onClick={() => setOpenedHoverBox(isHovered ? null : index)} // Toggle the hover box
-      >
-        <div className={`dot ${isLeft ? "dot-left" : "dot-right"}`} />
-        {isHovered && (
-          <div className={`hover-box ${isLeft ? "hover-left" : "hover-right"}`}>
-            <h3>{item.name}</h3>
-            <div className="image-container" style={{ backgroundColor: "white" }}>
-              {!imageLoaded && <div className="image-placeholder"></div>}
-              <img
-                src={item.image}
-                alt={item.name}
-                className={`hover-image ${imageLoaded ? "visible" : "hidden"}`}
-                loading="lazy"
-                onLoad={() => setImageLoaded(true)}
-                onError={(e) => {
-                  e.target.src = "https://images.unsplash.com/photo-1594322436404-5a0526db4d13";
-                  setImageLoaded(true);
-                }}
-              />
-            </div>
-            <div className="button-group">
-              <button className="accept" onClick={() => onAccept(item)}>
-                <FaCheck className="icon" />
+    <div className="suggest-container">
+      {/* Top Bar */}
+      <div className="top-bar">
+        <button id="name" onClick={() => navigate("/home")}>
+          RouteWeaver
+        </button>
+      </div>
+
+      <div className="sidebar">
+        <div className="routes">
+          <div className="route-header">
+            {origin} to {destination}
+          </div>
+          <div className="route-list">
+            {routesData.map((route, index) => (
+              <button
+                key={index}
+                className={`route-item ${
+                  selectedRouteIndex === index ? "selected" : ""
+                }`}
+                onClick={() => setSelectedRouteIndex(index)}
+              >
+                <span className="route-number">
+                  {numberEmojis[index] || index + 1}
+                </span>
+                <span className="route-time">{route.timeTaken}</span>
+                <span className="route-distance">{route.distance}</span>
               </button>
-              <button className="decline" onClick={() => onDecline(item)}>
-                <FaTimes className="icon" />
-              </button>
+            ))}
+          </div>
+        </div>
+        <hr />
+        <div className="places">
+          <div className="place-header">Places to Visit</div>
+          <div className="place-list">
+            {selectedRouteData && selectedRouteData.places ? (
+              selectedRouteData.places.map((place, index) => (
+                <button
+                  key={index}
+                  className="place-item"
+                  onMouseEnter={() => setHoveredPlace(place)}
+                  onMouseLeave={() => setHoveredPlace(null)}
+                >
+                  {place.name}
+                </button>
+              ))
+            ) : (
+              <p>Select a route to view places</p>
+            )}
+          </div>
+        </div>
+        <hr />
+        <div className="bottom-buttons">
+          <button id="navigate-btn">Navigate</button>
+          <button id="submit-btn">Submit</button>
+        </div>
+      </div>
+
+      <div className="map-area">
+        Map Area (Blank for now)
+        {hoveredPlace && (
+          <div className="hoverbox">
+            <div className="hoverbox-header">
+              <span className="hoverbox-name">{hoveredPlace.name}</span>
+              <span className="hoverbox-rating">
+                {hoveredPlace.rating}⭐
+              </span>
             </div>
+            <img
+              src={hoveredPlace.image}
+              alt={hoveredPlace.name}
+              className="hoverbox-image"
+            />
           </div>
         )}
       </div>
@@ -88,86 +125,4 @@ const TimelineItem = ({ item, isLeft, onAccept, onDecline, index, openedHoverBox
   );
 };
 
-
-const Timeline = () => {
-  const [timelineData, setTimelineData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [acceptedLocations, setAcceptedLocations] = useState([]);
-  const [declinedLocations, setDeclinedLocations] = useState([]);
-  const [openedHoverBox, setOpenedHoverBox] = useState(null); // Tracks the currently open hover box
-  const navigate = useNavigate();
-  const location = sessionStorage.getItem("location");
-  const dest = sessionStorage.getItem("destination");
-
-  useEffect(() => {
-    const fetchTimelineData = async () => {
-      try {
-        const response = await axios.get("http://localhost:5000/create", {
-          params: { origin: location, destination: dest },
-        });
-        const fetchedData = response.data.places.map((place, index) => ({
-          ...place,
-          image: response.data.images[index] || null,
-          description: "Tourist Attraction",
-        }));
-  
-        setTimelineData(fetchedData);
-      } catch (err) {
-        setError(err);
-        console.error("Error fetching data:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTimelineData();
-  }, []);
-
-  const handleAccept = (item) => {
-    setAcceptedLocations([...acceptedLocations, item]);
-  };
-
-  const handleDecline = (name) => {
-    setDeclinedLocations([...declinedLocations, name]);
-  };
-
-  const handleProceed = () => {
-    navigate("/summary", { state: { acceptedLocations } });
-  };
-
-  if (loading)
-    return (
-      <div className="loading-container">
-        <Triangle
-          visible={true}
-          height="80"
-          width="80"
-          color="#4fa94d"
-          ariaLabel="triangle-loading"
-        />
-      </div>
-    );
-  if (error) return <div>Error: {error.message}</div>;
-
-  return (
-    <div className="timeline-container">
-      <div className="timeline-line" />
-      {timelineData.map((item, index) => (
-        <TimelineItem
-          key={item.place_id}
-          item={item}
-          isLeft={index % 2 === 0}
-          onAccept={handleAccept}
-          onDecline={handleDecline}
-          index={index}
-          openedHoverBox={openedHoverBox}
-          setOpenedHoverBox={setOpenedHoverBox}
-        />
-      ))}
-      <button className="proceed-btn" onClick={handleProceed}>Proceed to Summary</button>
-    </div>
-  );
-};
-
-export default Timeline;
+export default SuggestPage;

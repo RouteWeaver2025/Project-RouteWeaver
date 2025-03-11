@@ -1,203 +1,238 @@
-/* Container for the entire timeline */
-.timeline-container {
+.suggest-container {
+  display: flex;
   width: 100vw;
   height: 100vh;
-  margin: 0;
-  padding: 0;
-  position: relative;
-  background-image: url(../assets/road.jpg);
-  background-size: cover;
-  background-position: center;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  flex-direction: row;
+}
+
+/* Fixed top bar */
+.top-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 60px;
+  background-color: black;
+  display: flex;
+  align-items: center;
+  padding-left: 20px;
+  z-index: 1000;
+}
+
+/* Home button */
+.suggest-container #name {
+  width: fit-content;  
+  position: absolute;
+  top: -20px;
+  left: 30px;
+  z-index: 1000;
+  background-color: transparent;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 24px;
+  font-weight: 600;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 33%;
+  background: white;
+  color: black;
+  padding: 20px;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
-  align-items: center;
+  margin-top: 60px;
 }
 
-/* Vertical timeline line in the center */
-.timeline-line {
-  position: absolute;
+/* Routes and Places */
+.routes, .places {
+  flex: 1;
   display: flex;
-  margin-top: 65px;
-  left: 50%;
-  top: 0;
-  bottom: 0;
-  width: 8px;
-  background-color: rgba(211, 196, 196, 0.5);
-  backdrop-filter: blur(10px);
-  transform: translateX(-50%);
+  flex-direction: column;
+  color: black;
+  overflow: hidden;
 }
 
-.loading-container {
+.route-header, .place-header {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.route-list, .place-list {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh; /* Adjust based on your layout */
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
 }
 
-.timeline-item {
+/* Scrollbar Styling */
+.places-list::-webkit-scrollbar {
+  width: 6px;
+}
+.places-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 3px;
+}
+.route-item {
   display: flex;
-  width: 100%;
-  margin-bottom: 4rem;
   align-items: center;
-  justify-content: center;
-  position: relative;
-}
-
-/* Content box of each timeline item */
-.timeline-content {
-  width: 60%;
-  position: relative;
-}
-
-/* Circular dot on the timeline */
-.dot {
-  width: 17px;
-  height: 17px;
-  margin-top:65px;
-  background: #bfa6a2;
-  border-radius: 50%;
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+  justify-content: space-between;
+  color: white;
+  background: #da9e48;
+  padding: 10px;
+  border-radius: 10px;
+  margin-top: 0px;
+  margin-bottom: 0px;
+  font-weight: 200;
+  width: 200px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   cursor: pointer;
+  transition: background 0.3s;
 }
 
-/* Hover box with details about the timeline item */
-.hover-box {
-  position: absolute;
-  top: 0;
-  width: 240px;
-  max-width: 90%;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(5px);
+.route-item span {
+  flex: 1;
+  text-align: center;
+}
+
+.route-item .route-number {
+  flex: 0 0 30px;
+  text-align: left;
+  font-size: large;
+}
+
+.route-item .route-time {
+  flex: 1;
+  text-align: center;
+  font-size: small;
+}
+
+.route-item .route-distance {
+  flex: 0 0 50px;
+  text-align: right;
+  font-size: small;
+}
+
+/* Route & Place Item Styling */
+.place-item {
+  color: white;
+  background: #da9e48;
+  padding: 10px;
+  border-radius: 10px;
+  font-weight: 500;
+  margin-top: 0px;
+  margin-bottom: 0px;
+  width: 200px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.route-item:hover, .place-item:hover {
+  background: #b74c1a;
+}
+
+/* Selected Route Styling */
+.route-item.selected {
+  background: #b74c1a;
+  border: 2px solid #8b3e12;
+}
+
+/* Bottom Buttons */
+.bottom-buttons {
+  margin-top: auto;
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+}
+
+.bottom-buttons #navigate-btn, #submit-btn {
+  background-color: #673b3b;
   color: white;
   padding: 10px;
-  border-radius: 20px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease-in-out;
-}
-
-/* Positioning hover box */
-.hover-left {
-  left: calc(50% + 20px);
-  transform: translateY(-50%);
-}
-
-.hover-right {
-  right: calc(50% + 20px);
-  transform: translateY(-50%);
-}
-
-/* Styling for images inside hover boxes */
-.hover-box img {
-  width: 100%;
-  height: auto;
-  max-height: 120px;
-  object-fit: cover;
-  border-radius: 5px;
-  margin-bottom: 5px;
-}
-
-/* Button group inside hover box */
-.button-group {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 10px;
-}
-
-/* Accept and Decline buttons */
-.accept,
-.decline {
-  display: flex;
-  align-items: center;
-  padding: 5px 10px;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 14px;
-  border: none;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(5px);
-  color: white;
-}
-
-.accept { color: green; }
-.accept:hover { background-color: rgba(13, 191, 78, 0.5); color: white; }
-.decline { color: red; }
-.decline:hover { background-color: red; color: white; }
-
-/* Proceed button fixed at bottom-right corner */
-.proceed-btn {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-  width: 300px;
-  background-color: #007bff;
-  color: rgb(255, 255, 255);
-  padding: 10px 16px;
-  font-size: 14px;
-  font-weight: bold;
   border: none;
   border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  font-size: 16px;
   cursor: pointer;
-  transition: all 0.3s ease-in-out;
+  font-weight: 600;
+  transition: background 0.3s;
 }
 
-/* Downward arrow at the end of the timeline */
-.timeline-arrow {
+.bottom-buttons #navigate-btn:hover, #submit-btn:hover {
+  background-color: #4a2626;
+}
+
+.hoverbox {
   position: absolute;
-  left: 50%;
-  bottom: -30px;
-  transform: translateX(-50%);
-  width: 0;
-  height: 0;
-  border-left: 12px solid transparent;
-  border-right: 12px solid transparent;
-  border-top: 16px solid #bfa6a2;
+  left: 650px;
+  top: 450px;
+  width: auto;
+  height: auto;
+  background-color: white;
+  border: 1px solid #ccc;
+  padding: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 5px;
+  width: 150px;
 }
 
-/* Responsive adjustments */
-@media only screen and (max-width: 768px) {
-  .hover-box {
-    width: 85%;
-    font-size: 12px;
-    padding: 8px;
-  }
-  .hover-box img { max-height: 100px; }
-  .proceed_btn {
-    bottom: 15px;
-    right: 15px;
-    padding: 8px 14px;
-    font-size: 12px;
-  }
+.hoverbox-header {
+  display: flex;
+  color: black;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: bold;
 }
 
-@media only screen and (max-width: 480px) {
-  .hover-box {
-    max-width: 150px;
-    font-size: 10px;
-    padding: 6px;
-  }
-  .hover-box img { max-height: 80px; }
-  .proceed_btn {
-    bottom: 10px;
-    right: 10px;
-    padding: 6px 12px;
-    font-size: 10px;
-  }
+.hoverbox-image {
+  width: 100%;
+  color: black;
+  margin-top: 5px;
+  border-radius: 5px;
 }
 
-@media only screen and (max-width: 320px) {
-  .hover-box {
-    max-width: 120px;
-    font-size: 8px;
-    padding: 5px;
+/* Map area */
+.map-area {
+  flex: 2;
+  background: #4051b5;
+  margin-top: 60px;
+}
+
+/* Divider Line */
+hr {
+  border: none;
+  border-top: 1px solid rgba(0, 0, 0, 0.2);
+  margin-top: 10px ;
+  margin-bottom: 10px;
+}
+
+@media screen and (max-width: 800px) {
+  .suggest-container {
+    flex-direction: column;
   }
-  .hover-box img { max-height: 60px; }
-  .proceed_btn {
-    bottom: 5px;
-    right: 5px;
-    padding: 5px 10px;
-    font-size: 8px;
+
+  .sidebar {
+    width: 100%;
+  }
+
+  .routes, .places {
+    width: 100%;
+  }
+
+  .map-area {
+    width: 100%;
+    height: 300px;
+    margin-top: 0px;
+  }
+  .suggest-container #name {
+    font-size: large;
+    left: 10px;
   }
 }

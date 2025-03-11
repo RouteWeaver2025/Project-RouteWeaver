@@ -1,5 +1,5 @@
 import express from 'express';
-import { getRouteWithTouristSpots } from '../utils/landmarks.js';
+import { getRoutesWithTouristSpots } from '../utils/landmarks.js';
 // import {summarizer} from '../utils/summmary.js';
 
 const newr=express.Router();
@@ -8,7 +8,7 @@ app.use(express.json());
 
 newr
     .route('/')
-    .get(getRouteWithTouristSpots)
+    .get(getRoutesWithTouristSpots)
 
 // newr
 //     .route('/suggestion')

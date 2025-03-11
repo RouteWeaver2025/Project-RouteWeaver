@@ -20,6 +20,9 @@ const LoginPage = () => {
     password: "",
   });
 
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
   // Handle Signup Input Changes
   const handleSignupChange = (e) => {
     const { name, value } = e.target;
@@ -64,15 +67,35 @@ const LoginPage = () => {
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
+    setError("");
+    setLoading(true);
     try {
       const response = await axios.post("http://localhost:5000/user/login", loginData);
-      console.log(loginData, loginData.email, loginData.password);
       if (response.status === 200) {
-        sessionStorage.setItem("email", loginData.email); // Store email in sessionStorage
+        sessionStorage.setItem("email", loginData.email);
         navigate(response.data.redirectUrl);
       }
     } catch (error) {
-      console.error("Login Error:", error.message);
+      console.error("Login Error:", error);
+      if (error.response) {
+        // Server responded with an error
+        if (error.response.status === 404) {
+          setError("Email not registered. Please sign up first.");
+        } else if (error.response.status === 401) {
+          setError("Invalid credentials. Please try again.");
+        } else if (error.response.status === 500) {
+          setError("Server error. Please try again later.");
+        } else {
+          setError("Login failed. Please try again.");
+        }
+      } else if (error.request) {
+        // Request made but no response received
+        setError("Cannot connect to server. Please check your internet connection.");
+      } else {
+        setError("An unexpected error occurred. Please try again.");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -120,6 +143,7 @@ const LoginPage = () => {
             <label htmlFor="chk" aria-hidden="true">
               Login
             </label>
+            {error && <div className="error-message">{error}</div>}
             <input
               type="email"
               name="email"
@@ -136,7 +160,9 @@ const LoginPage = () => {
               onChange={handleLoginChange}
               required
             />
-            <button type="submit">Login</button>
+            <button type="submit" disabled={loading}>
+              {loading ? "Logging in..." : "Login"}
+            </button>
           </form>
         </div>
       </div>

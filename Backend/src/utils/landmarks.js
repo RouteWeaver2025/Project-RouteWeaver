@@ -4,187 +4,294 @@ dotenv.config();
 
 const client = new Client({});
 const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-async function getRouteWithTouristSpots(req, res) {
-    try {
-        const origin = req.query.origin;
-        const destination = req.query.destination;
 
-        const directionsResponse = await getDirectionsWithCache(origin, destination, apiKey);
-        const polyline = directionsResponse.data.routes[0].overview_polyline.points;
-        const points = decodePolyline(polyline);
+async function getRoutesWithTouristSpots(req, res) {
+  try {
+    const origin = req.query.origin;
+    const destination = req.query.destination;
+    const selectedKeywords = JSON.parse(req.query.selectedKeywords || "[]");
 
-        const waypoints = sampleWaypoints(points, 100);
-        const radius = 45000;
+    // Fetch directions with alternatives
+    const directionsResponse = await client.directions({
+      params: {
+        origin,
+        destination,
+        key: apiKey,
+        alternatives: true,
+        mode: "driving"
+      }
+    });
 
-        const allPlaces = [];
-        const seenPlaceIds = new Set();
+    const routes = directionsResponse.data.routes || [];
+    
+    // Process each route
+    const processedRoutes = await Promise.all(
+      routes.map(async (route, index) => {
+        let totalDuration = 0;
+        let totalDistance = 0;
+        route.legs.forEach(leg => {
+          totalDuration += leg.duration.value;
+          totalDistance += leg.distance.value;
+        });
+        const timeTaken = formatDuration(totalDuration);
+        const distance = formatDistance(totalDistance);
 
-        for (const waypoint of waypoints) {
-            const placesNearWaypoint = await getTouristAttractionsWithCache(waypoint, radius, apiKey, combinedKeywords);
+        // Use steps from the first leg, skipping 10% at the start and 5% at the end
+        const steps = route.legs[0].steps;
+        const startIndex = Math.floor(steps.length * 0.1);
+        const endIndex = Math.floor(steps.length * 0.95);
+        const relevantSteps = steps.slice(startIndex, endIndex);
 
-            if (placesNearWaypoint) { // Check if placesNearWaypoint is not undefined
-                for (const place of placesNearWaypoint) {
-                    if (!seenPlaceIds.has(place.place_id)) {
-                        allPlaces.push(place);
-                        seenPlaceIds.add(place.place_id);
-                    }
-                }
-            }
-            if (allPlaces.length >= 8) break;
+        // Get places along these steps (ensuring at least 5 and at most 11 unique places)
+        let places = await getTouristSpots(relevantSteps, selectedKeywords);
+        places = removeDuplicates(places);
+        if (places.length > 11) {
+          places = places.slice(0, 11);
         }
+        
+        return {
+          index,
+          timeTaken,
+          distance,
+          places
+        };
+      })
+    );
 
-        const placeDetails = [];
-        const imageUrls = [];
-
-        for (const place of allPlaces.slice(0, 8)) {
-            placeDetails.push({
-                name: place.name,
-                location: place.location,
-                place_id: place.place_id,
-                formatted_address: place.formatted_address,
-                state: place.state,
-                country: place.country,
-            });
-
-            const imageUrl = place.photos && place.photos.length > 0
-                ? getPlacePhotoUrl(place.photos[0].photo_reference, apiKey)
-                : null;
-
-            imageUrls.push(imageUrl);
-        }
-
-        return res.json({ places: placeDetails, images: imageUrls });
-
-    } catch (error) {
-        console.error("Error:", error);
-        res.status(500).json({ error: "An error occurred" });
-    }
+    res.json({ routes: processedRoutes });
+  } catch (error) {
+    console.error("Error in getRoutesWithTouristSpots:", error);
+    res.status(500).json({ error: "Failed to fetch routes" });
+  }
 }
 
+/**
+ * getTouristSpots
+ * For a given set of steps, fetch nearby tourist spots (with rating and image)
+ * by iterating over the user-selected keywords.
+ */
+async function getTouristSpots(steps, selectedKeywords) {
+  let spots = [];
+
+  // For each step, try fetching places for each selected keyword (or fallback)
+  for (const step of steps) {
+    const waypoint = step.end_location;
+    // Build array of types to search: use mapped values from keywords, or default to 'tourist_attraction'
+    let typesToTry =
+      selectedKeywords.length > 0
+        ? selectedKeywords
+            .map(keyword => mapKeywordToPlaceType(keyword))
+            .filter(t => t)
+        : ["tourist_attraction"];
+    if (typesToTry.length === 0) {
+      typesToTry = ["tourist_attraction"];
+    }
+
+    // For each type, fetch nearby places
+    for (const type of typesToTry) {
+      try {
+        const placesResponse = await client.placesNearby({
+          params: {
+            location: `${waypoint.lat},${waypoint.lng}`,
+            radius: 5000, // Use a broader search radius
+            type,
+            key: apiKey
+          }
+        });
+        const results = placesResponse.data.results || [];
+        // Filter for places that meet our quality criteria
+        const filtered = results.filter(place => {
+          return place.rating >= 4 && place.user_ratings_total >= 1500;
+        });
+        // For each type, push up to 2 places from the filtered results
+        filtered.slice(0, 2).forEach(place => {
+          spots.push({
+            name: place.name,
+            rating: place.rating.toString(),
+            image: place.photos
+              ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${place.photos[0].photo_reference}&key=${apiKey}`
+              : "https://via.placeholder.com/100"
+          });
+        });
+      } catch (error) {
+        console.error("Error fetching places for type", type, error);
+      }
+    }
+  }
+
+  return spots;
+}
+
+/**
+ * removeDuplicates
+ * Removes duplicate places based on the place name.
+ */
+function removeDuplicates(spots) {
+  const unique = [];
+  const seen = new Set();
+  for (const spot of spots) {
+    if (!seen.has(spot.name)) {
+      unique.push(spot);
+      seen.add(spot.name);
+    }
+  }
+  return unique;
+}
+
+/**
+ * mapKeywordToPlaceType
+ * Maps user-friendly keywords to Google Place types.
+ */
+function mapKeywordToPlaceType(keyword) {
+  const lower = keyword.toLowerCase();
+  const mapping = {
+    restaurant: "restaurant",
+    cafe: "cafe",
+    lake: "natural_feature", // Google doesn't have a 'lake' type, so use natural_feature
+    viewpoint: "point_of_interest",
+    museum: "museum",
+    park: "park"
+    // Extend this mapping as needed
+  };
+  return mapping[lower] || "tourist_attraction";
+}
+
+// Helper function: formatDuration
+function formatDuration(durationInSeconds) {
+  const hours = Math.floor(durationInSeconds / 3600);
+  const minutes = Math.floor((durationInSeconds % 3600) / 60);
+  return hours > 0 ? `${hours}hrs ${minutes}min` : `${minutes}min`;
+}
+
+// Helper function: formatDistance
+function formatDistance(distanceInMeters) {
+  const km = distanceInMeters / 1000;
+  return `${Math.round(km)}km`;
+}
 
 // --- Helper Functions ---
 
-// 1. Cached Directions Service
-const directionsCache = {};
-async function getDirectionsWithCache(origin, destination, apiKey) {
-    const cacheKey = `${origin},${destination}`;
-    if (directionsCache[cacheKey]) {
-        return directionsCache[cacheKey];
-    }
+// // 1. Cached Directions Service
+// const directionsCache = {};
+// async function getDirectionsWithCache(origin, destination, apiKey) {
+//     const cacheKey = `${origin},${destination}`;
+//     if (directionsCache[cacheKey]) {
+//         return directionsCache[cacheKey];
+//     }
 
-    const directionsResponse = await client.directions({
-        params: { origin, destination, key: apiKey },
-    });
-    directionsCache[cacheKey] = directionsResponse;
-    return directionsResponse;
-}
+//     const directionsResponse = await client.directions({
+//         params: { origin, destination, key: apiKey },
+//     });
+//     directionsCache[cacheKey] = directionsResponse;
+//     return directionsResponse;
+// }
 
-// 2. Sample Waypoints
-function sampleWaypoints(points, maxWaypoints) {
-    if (points.length <= maxWaypoints) return points;
+// // 2. Sample Waypoints
+// function sampleWaypoints(points, maxWaypoints) {
+//     if (points.length <= maxWaypoints) return points;
 
-    const step = Math.ceil(points.length / maxWaypoints);
-    const waypoints = [];
-    for (let i = 0; i < points.length; i += step) {
-        waypoints.push(points[i]);
-    }
-    return waypoints;
-}
+//     const step = Math.ceil(points.length / maxWaypoints);
+//     const waypoints = [];
+//     for (let i = 0; i < points.length; i += step) {
+//         waypoints.push(points[i]);
+//     }
+//     return waypoints;
+// }
 
-// 3. Cached and Optimized Places Nearby Search
-const placesCache = {};
-const combinedKeywords = "monument, historical site, shopping mall, museum, park, waterfall, garden, scenic view, sightseeing";
+// // 3. Cached and Optimized Places Nearby Search
+// const placesCache = {};
+// const combinedKeywords = "monument, historical site, shopping mall, museum, park, waterfall, garden, scenic view, sightseeing";
 
 
-async function getTouristAttractionsWithCache(waypoint, radius, apiKey, keywords) {
-    const cacheKey = `${waypoint.lat},${waypoint.lng},${radius},${keywords}`;
-    if (placesCache[cacheKey]) {
-        return placesCache[cacheKey];
-    }
+// async function getTouristAttractionsWithCache(waypoint, radius, apiKey, keywords) {
+//     const cacheKey = `${waypoint.lat},${waypoint.lng},${radius},${keywords}`;
+//     if (placesCache[cacheKey]) {
+//         return placesCache[cacheKey];
+//     }
 
-    const response = await client.placesNearby({
-        params: {
-            location: `${waypoint.lat},${waypoint.lng}`,
-            radius,
-            type: "tourist_attraction",
-            keyword: keywords,
-            key: apiKey,
-        },
-    });
+//     const response = await client.placesNearby({
+//         params: {
+//             location: `${waypoint.lat},${waypoint.lng}`,
+//             radius,
+//             type: "tourist_attraction",
+//             keyword: keywords,
+//             key: apiKey,
+//         },
+//     });
 
-    if (!response.data || !response.data.results) {
-        console.error("Invalid Places API response:", response);
-        placesCache[cacheKey] = [];
-        return [];
-    }
+//     if (!response.data || !response.data.results) {
+//         console.error("Invalid Places API response:", response);
+//         placesCache[cacheKey] = [];
+//         return [];
+//     }
 
-    const attractions = [];
-    for (const place of response.data.results.filter(place => place.rating >= 4.0 && place.user_ratings_total > 100)) {
-        const placeDetails = {
-            name: place.name,
-            location: place.geometry.location,
-            place_id: place.place_id,
-            photos: place.photos || [],
-        };
+//     const attractions = [];
+//     for (const place of response.data.results.filter(place => place.rating >= 4.0 && place.user_ratings_total > 100)) {
+//         const placeDetails = {
+//             name: place.name,
+//             location: place.geometry.location,
+//             place_id: place.place_id,
+//             photos: place.photos || [],
+//         };
 
-        try {
-            const geocodeResponse = await client.geocode({
-                params: { place_id: place.place_id, key: apiKey },
-            });
+//         try {
+//             const geocodeResponse = await client.geocode({
+//                 params: { place_id: place.place_id, key: apiKey },
+//             });
 
-            if (geocodeResponse.data.results && geocodeResponse.data.results.length > 0) {
-                const addressComponents = geocodeResponse.data.results[0].address_components;
-                placeDetails.formatted_address = geocodeResponse.data.results[0].formatted_address;
+//             if (geocodeResponse.data.results && geocodeResponse.data.results.length > 0) {
+//                 const addressComponents = geocodeResponse.data.results[0].address_components;
+//                 placeDetails.formatted_address = geocodeResponse.data.results[0].formatted_address;
 
-                const stateComponent = addressComponents.find(component => component.types.includes('administrative_area_level_1'));
-                const countryComponent = addressComponents.find(component => component.types.includes('country'));
+//                 const stateComponent = addressComponents.find(component => component.types.includes('administrative_area_level_1'));
+//                 const countryComponent = addressComponents.find(component => component.types.includes('country'));
 
-                if (stateComponent) {
-                    placeDetails.state = stateComponent.long_name;
-                }
-                if (countryComponent) {
-                    placeDetails.country = countryComponent.long_name;
-                }
-            }
-        } catch (geocodeError) {
-            console.error("Geocoding error:", geocodeError);
-        }
+//                 if (stateComponent) {
+//                     placeDetails.state = stateComponent.long_name;
+//                 }
+//                 if (countryComponent) {
+//                     placeDetails.country = countryComponent.long_name;
+//                 }
+//             }
+//         } catch (geocodeError) {
+//             console.error("Geocoding error:", geocodeError);
+//         }
 
-        attractions.push(placeDetails);
-    }
+//         attractions.push(placeDetails);
+//     }
 
-    placesCache[cacheKey] = attractions;
-    return attractions;
-}
+//     placesCache[cacheKey] = attractions;
+//     return attractions;
+// }
 
-// 4. Efficient Filter and Deduplication
-function filterAndDeduplicate(places) {
-    const uniquePlaces = [];
-    const seenPlaceIds = new Set();
+// // 4. Efficient Filter and Deduplication
+// function filterAndDeduplicate(places) {
+//     const uniquePlaces = [];
+//     const seenPlaceIds = new Set();
 
-    for (const place of places) {
-        if (!seenPlaceIds.has(place.place_id)) {
-            uniquePlaces.push(place);
-            seenPlaceIds.add(place.place_id);
-        }
-    }
-    return uniquePlaces;
-}
+//     for (const place of places) {
+//         if (!seenPlaceIds.has(place.place_id)) {
+//             uniquePlaces.push(place);
+//             seenPlaceIds.add(place.place_id);
+//         }
+//     }
+//     return uniquePlaces;
+// }
 
-// 5. Function to generate image URL from photo reference
-function getPlacePhotoUrl(photoReference, apiKey, maxWidth = 400) {
-    if (!photoReference) return null;
+// // 5. Function to generate image URL from photo reference
+// function getPlacePhotoUrl(photoReference, apiKey, maxWidth = 400) {
+//     if (!photoReference) return null;
 
-    const baseUrl = "https://maps.googleapis.com/maps/api/place/photo";
-    const params = {
-        maxwidth: maxWidth,
-        photoreference: photoReference,
-        key: apiKey,
-    };
+//     const baseUrl = "https://maps.googleapis.com/maps/api/place/photo";
+//     const params = {
+//         maxwidth: maxWidth,
+//         photoreference: photoReference,
+//         key: apiKey,
+//     };
 
-    const queryString = new URLSearchParams(params).toString();
-    return `${baseUrl}?${queryString}`;
-}
+//     const queryString = new URLSearchParams(params).toString();
+//     return `${baseUrl}?${queryString}`;
+// }
 
 // Decode polyline function (unchanged)
 function decodePolyline(polyline) {
@@ -325,4 +432,4 @@ async function getName(lat, lng) {
     }
 }
 // Test the function
-export { getRouteWithTouristSpots, getEntireRoute ,getOD};
+export { getRoutesWithTouristSpots, getEntireRoute ,getOD};
