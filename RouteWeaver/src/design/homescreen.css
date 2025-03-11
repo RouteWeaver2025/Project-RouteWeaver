@@ -138,11 +138,20 @@ body {
   position: relative;
   outline: none;
   padding: 0.5rem 1rem;
+
 }
 
-.route-btn:hover {
+.route-btn:hover {    
   transform: scale(1.05);
   text-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+}
+
+
+.new-routes:hover,
+.saved-routes:hover {
+  background-color: transparent !important; /* Ensures no background appears */
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.8); /* Keeps the glowing effect */
+  transition: all 0.3s ease;
 }
 
 .new-routes {
