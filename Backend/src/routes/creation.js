@@ -1,16 +1,12 @@
 import express from 'express';
-import { getRoutesWithTouristSpots } from '../utils/landmarks.js';
-// import {summarizer} from '../utils/summmary.js';
+import landmarksRouter from '../utils/landmarks.js';
 
-const newr=express.Router();
-const app=express();
-app.use(express.json());
+const router = express.Router();
 
-newr
-    .route('/')
-    .get(getRoutesWithTouristSpots)
+// Mount landmarks router at "/landmarks"
+// This means the final endpoint will be /api/landmarks/places
+router.use('/landmarks', landmarksRouter);
 
-// newr
-//     .route('/suggestion')
-//     .get(summarizer)
-export {newr};
+// You can add additional endpoints for suggestions here if needed
+
+export default router;

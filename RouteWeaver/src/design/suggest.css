@@ -1,9 +1,9 @@
 .suggest-container {
   display: flex;
+  flex-direction: column;
   width: 100vw;
   height: 100vh;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
-  flex-direction: row;
 }
 
 /* Fixed top bar */
@@ -20,9 +20,8 @@
   z-index: 1000;
 }
 
-/* Home button */
 .suggest-container #name {
-  width: fit-content;  
+  width: fit-content;
   position: absolute;
   top: -20px;
   left: 30px;
@@ -37,7 +36,14 @@
   transition: all 0.3s ease;
 }
 
-/* Sidebar */
+/* Main content area */
+.main-content {
+  display: flex;
+  flex: 1;
+  margin-top: 60px;
+}
+
+/* Sidebar styles */
 .sidebar {
   width: 33%;
   background: white;
@@ -46,16 +52,16 @@
   box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
-  margin-top: 60px;
+  position: relative;
+  z-index: 10;
 }
 
-/* Routes and Places */
+/* Routes and places containers */
 .routes, .places {
-  flex: 1;
   display: flex;
   flex-direction: column;
-  color: black;
   overflow: hidden;
+  position: relative;
 }
 
 .route-header, .place-header {
@@ -69,17 +75,14 @@
   flex-direction: column;
   gap: 10px;
   overflow-y: auto;
+  max-height: 300px;
+  min-height: 200px;
 }
 
-/* Scrollbar Styling */
-.places-list::-webkit-scrollbar {
-  width: 6px;
-}
-.places-list::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 3px;
-}
+/* Route items */
 .route-item {
+  flex-shrink: 0;
+  transition: all 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -87,13 +90,11 @@
   background: #da9e48;
   padding: 10px;
   border-radius: 10px;
-  margin-top: 0px;
-  margin-bottom: 0px;
-  font-weight: 200;
+  font-weight: 500;
   width: 200px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   cursor: pointer;
-  transition: background 0.3s;
+  border: none;
 }
 
 .route-item span {
@@ -106,45 +107,62 @@
   text-align: left;
   font-size: large;
 }
-
 .route-item .route-time {
   flex: 1;
   text-align: center;
   font-size: small;
 }
-
 .route-item .route-distance {
   flex: 0 0 50px;
   text-align: right;
   font-size: small;
 }
 
-/* Route & Place Item Styling */
-.place-item {
-  color: white;
-  background: #da9e48;
-  padding: 10px;
-  border-radius: 10px;
-  font-weight: 500;
-  margin-top: 0px;
-  margin-bottom: 0px;
-  width: 200px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  cursor: pointer;
-  transition: background 0.3s;
-}
-
 .route-item:hover, .place-item:hover {
   background: #b74c1a;
 }
 
-/* Selected Route Styling */
-.route-item.selected {
-  background: #b74c1a;
-  border: 2px solid #8b3e12;
+/* Place items */
+.place-item {
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+  width: 100%;
+  padding: 12px;
+  margin: 8px 0;
+  border: none;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  text-align: left;
 }
 
-/* Bottom Buttons */
+.place-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.place-name {
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.place-details {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #666;
+}
+
+.place-rating, .place-visitors {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Bottom buttons */
 .bottom-buttons {
   margin-top: auto;
   display: flex;
@@ -164,75 +182,105 @@
   font-weight: 600;
   transition: background 0.3s;
 }
-
 .bottom-buttons #navigate-btn:hover, #submit-btn:hover {
   background-color: #4a2626;
-}
-
-.hoverbox {
-  position: absolute;
-  left: 650px;
-  top: 450px;
-  width: auto;
-  height: auto;
-  background-color: white;
-  border: 1px solid #ccc;
-  padding: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  border-radius: 5px;
-  width: 150px;
-}
-
-.hoverbox-header {
-  display: flex;
-  color: black;
-  justify-content: space-between;
-  font-size: 14px;
-  font-weight: bold;
-}
-
-.hoverbox-image {
-  width: 100%;
-  color: black;
-  margin-top: 5px;
-  border-radius: 5px;
 }
 
 /* Map area */
 .map-area {
   flex: 2;
-  background: #4051b5;
-  margin-top: 60px;
+  position: relative;
+  z-index: 1;
 }
 
-/* Divider Line */
-hr {
-  border: none;
-  border-top: 1px solid rgba(0, 0, 0, 0.2);
-  margin-top: 10px ;
-  margin-bottom: 10px;
+.map-area .leaflet-container {
+  width: 100%;
+  height: 100%;
 }
 
+/* Hoverbox overlay for place details */
+.hoverbox {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  z-index: 1100;
+  max-width: 250px;
+  overflow: hidden;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.hoverbox-image-container {
+  width: 100%;
+  height: 150px;
+  overflow: hidden;
+}
+
+.hoverbox-image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hoverbox-info {
+  padding: 8px;
+  text-align: center;
+}
+
+.hoverbox-name {
+  font-weight: bold;
+  margin-bottom: 4px;
+  font-size: 16px;
+  color: #333;
+}
+
+.hoverbox-meta {
+  font-size: 14px;
+  color: #666;
+}
+
+/* Responsive adjustments */
 @media screen and (max-width: 800px) {
-  .suggest-container {
+  .main-content {
     flex-direction: column;
   }
-
   .sidebar {
     width: 100%;
   }
-
-  .routes, .places {
-    width: 100%;
-  }
-
   .map-area {
     width: 100%;
     height: 300px;
-    margin-top: 0px;
+    margin-top: 0;
   }
   .suggest-container #name {
     font-size: large;
     left: 10px;
   }
+}
+
+.route-list .route-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 50px;
+}
+
+.route-list, .place-list {
+  contain: layout;
+}
+
+.loading-placeholder {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  color: #666;
+  font-style: italic;
+  padding: 20px;
+  text-align: center;
 }

@@ -9,6 +9,10 @@ function Questions() {
   const [location, setLocation] = useState('');
   const [number, setNumber] = useState('');
   const [selectedKeywords, setSelectedKeywords] = useState([]);
+  const [suggestions, setSuggestions] = useState([]); // Suggestions for autocomplete
+  const [activeField, setActiveField] = useState(null); // "destination" or "location"
+
+  // Extended keywords list
   const keywords = [
     { id: 1, name: 'Restaurant', icon: '🍽️' },
     { id: 2, name: 'Cafe', icon: '☕' },
@@ -67,74 +71,64 @@ function Questions() {
     { id: 55, name: 'Sporting Goods', icon: '⚽' }
   ];
 
+  // Debounce and fetch suggestions from Nominatim
   useEffect(() => {
-    sessionStorage.setItem('number', 1);
-    if (currentStep !== 1 && currentStep !== 2) return;
+    const timer = setTimeout(() => {
+      if (activeField === "destination" && destination.length > 2) {
+        fetchSuggestions(destination);
+      } else if (activeField === "location" && location.length > 2) {
+        fetchSuggestions(location);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [destination, location, activeField]);
 
-    const savedDestination = sessionStorage.getItem('destination');
-    if (savedDestination) setDestination(savedDestination);
-
-    const savedLocation = sessionStorage.getItem('location');
-    if (savedLocation) setLocation(savedLocation);
-
-    const savedNumber = sessionStorage.getItem('number');
-    if (savedNumber) setNumber(savedNumber);
-
-    const initializeAutocomplete = (inputId, setValue, sessionKey) => {
-      const input = document.getElementById(inputId);
-      if (!input) return;
-
-      const autocomplete = new window.google.maps.places.Autocomplete(input);
-      autocomplete.addListener('place_changed', () => {
-        const place = autocomplete.getPlace();
-        if (place.geometry) {
-          const fullPlaceName = place.formatted_address || place.name;
-          setValue(fullPlaceName);
-          sessionStorage.setItem(sessionKey, fullPlaceName);
-          console.log(`Selected ${sessionKey}:`, fullPlaceName);
-        } else {
-          console.log("No geometry information available for the selected place.");
-        }
-      });
-    };
-
-    if (!window.google || !window.google.maps) {
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places`;
-      script.async = true;
-      script.defer = true;
-      script.onload = () => {
-        if (currentStep === 1) initializeAutocomplete('search-bar', setDestination, 'destination');
-        if (currentStep === 2) initializeAutocomplete('search-bar1', setLocation, 'location');
-      };
-      document.head.appendChild(script);
-    } else {
-      if (currentStep === 1) initializeAutocomplete('search-bar', setDestination, 'destination');
-      if (currentStep === 2) initializeAutocomplete('search-bar1', setLocation, 'location');
+  const fetchSuggestions = async (query) => {
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      setSuggestions(data);
+    } catch (error) {
+      console.error("Error fetching suggestions:", error);
     }
-  }, [currentStep]);
+  };
 
+  const handleSuggestionClick = (suggestion, type) => {
+    if (type === "destination") {
+      setDestination(suggestion.display_name);
+      sessionStorage.setItem("destination", suggestion.display_name);
+    } else if (type === "location") {
+      setLocation(suggestion.display_name);
+      sessionStorage.setItem("location", suggestion.display_name);
+    }
+    setSuggestions([]);
+  };
+
+  // Moved the logic that saves selected keywords to session storage
+  // so that we allow zero keywords to proceed.
   const handleNext = () => {
     if (currentStep === 4) {
-      // Save selected keywords to localStorage
-      const selectedKeywordNames = selectedKeywords
-        .map(id => keywords.find(k => k.id === id)?.name)
-        .filter(name => name); // Remove any undefined values
-      
-      sessionStorage.setItem('selectedKeywords', JSON.stringify(selectedKeywordNames));
-      
+      // Save selected keywords to sessionStorage (even if empty)
+      const selectedKeywordNames = selectedKeywords.map(id => {
+        const kw = keywords.find(k => k.id === id);
+        return kw ? kw.name : null;
+      }).filter(name => name);
 
-      
-      // Navigate to suggestions page
-      navigate('/suggestions');
+      // Store them (could be an empty array if user picked none)
+      sessionStorage.setItem("selectedKeywords", JSON.stringify(selectedKeywordNames));
+      navigate("/suggestions");
     } else {
       setCurrentStep(prev => prev + 1);
     }
   };
 
   const handleBack = () => {
-    if (currentStep === 0) navigate('/home');
-    else setCurrentStep(currentStep - 1);
+    if (currentStep === 0) {
+      navigate("/home");
+    } else {
+      setCurrentStep(prev => prev - 1);
+    }
   };
 
   const toggleKeyword = (id) => {
@@ -147,7 +141,9 @@ function Questions() {
 
   return (
     <>
-      <button id="name" onClick={() => navigate('/home')}>RouteWeaver</button>
+      <button id="name" onClick={() => navigate("/home")}>
+        RouteWeaver
+      </button>
       <div className="main">
         {currentStep === 0 && (
           <div>
@@ -160,11 +156,28 @@ function Questions() {
             </div>
           </div>
         )}
+
         {currentStep === 1 && (
           <div>
             <p id="text2">Where do you want to go?</p>
             <div className="search-bar-container">
-              <input id="search-bar" value={destination} type="text" placeholder="Search.." onChange={(e) => setDestination(e.target.value)} />
+              <input
+                id="search-bar"
+                value={destination}
+                type="text"
+                placeholder="Search destination..."
+                onFocus={() => setActiveField("destination")}
+                onChange={(e) => setDestination(e.target.value)}
+              />
+              {activeField === "destination" && suggestions.length > 0 && (
+                <ul className="suggestions-list">
+                  {suggestions.map((sugg) => (
+                    <li key={sugg.place_id} onClick={() => handleSuggestionClick(sugg, "destination")}>
+                      {sugg.display_name}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
             <div className="move">
               <button id="back" onClick={handleBack}></button>
@@ -172,11 +185,28 @@ function Questions() {
             </div>
           </div>
         )}
+
         {currentStep === 2 && (
           <div>
             <p id="text2">Where will you start from?</p>
             <div className="search-bar-container">
-              <input id="search-bar1" value={location} type="text" placeholder="Search.." onChange={(e) => setLocation(e.target.value)} />
+              <input
+                id="search-bar1"
+                value={location}
+                type="text"
+                placeholder="Search origin..."
+                onFocus={() => setActiveField("location")}
+                onChange={(e) => setLocation(e.target.value)}
+              />
+              {activeField === "location" && suggestions.length > 0 && (
+                <ul className="suggestions-list">
+                  {suggestions.map((sugg) => (
+                    <li key={sugg.place_id} onClick={() => handleSuggestionClick(sugg, "location")}>
+                      {sugg.display_name}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
             <div className="move">
               <button id="back" onClick={handleBack}></button>
@@ -184,6 +214,7 @@ function Questions() {
             </div>
           </div>
         )}
+
         {currentStep === 3 && (
           <div>
             <p id="text2">How big is your group?</p>
@@ -191,7 +222,13 @@ function Questions() {
               <button id="solo" onClick={handleNext}>Solo</button>
               <div className="multiple">
                 <p id="text3"><strong>Multiple</strong></p>
-                <input id="measure" value={number} type="text" placeholder="1" onChange={(e) => setNumber(e.target.value)} />
+                <input
+                  id="measure"
+                  value={number}
+                  type="text"
+                  placeholder="1"
+                  onChange={(e) => setNumber(e.target.value)}
+                />
               </div>
             </div>
             <div className="move">
@@ -200,6 +237,7 @@ function Questions() {
             </div>
           </div>
         )}
+
         {currentStep === 4 && (
           <div>
             <p id="text2">Select Your Interests</p>
@@ -212,7 +250,9 @@ function Questions() {
                   style={{
                     backgroundColor: 'rgba(0, 0, 0, 0.5)',
                     color: 'white',
-                    border: selectedKeywords.includes(keyword.id) ? '2px solid #da9e48' : '2px solid rgba(255, 255, 255, 0.2)'
+                    border: selectedKeywords.includes(keyword.id)
+                      ? '2px solid #da9e48'
+                      : '2px solid rgba(255, 255, 255, 0.2)'
                   }}
                 >
                   <span className="keyword-icon">{keyword.icon}</span>
@@ -225,11 +265,12 @@ function Questions() {
             </div>
             <div className="move">
               <button id="back" onClick={handleBack}></button>
-              <button
-                id="next"
-                onClick={handleNext}
-                disabled={selectedKeywords.length === 0}
-              ></button>
+              {/* 
+                IMPORTANT CHANGE:
+                Removed "disabled={selectedKeywords.length === 0}" 
+                so user can proceed even with zero keywords.
+              */}
+              <button id="next" onClick={handleNext}></button>
             </div>
           </div>
         )}
