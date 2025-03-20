@@ -225,13 +225,34 @@ body {
   flex-wrap: wrap;
 }
 
-.calendar-container {
+/* .calendar-container {
   background-color: #111111;
   border-radius: 8px;
   padding: 2rem;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   max-width: 600px;
   width: 100%;
+} */
+.calendar-container {
+  /* background-color: #111111; <-- remove or comment this out */
+  /* box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); <-- remove or comment this out */
+  border-radius: 8px;
+  padding: 1rem; /* optional */
+  max-width: 600px;
+  width: 100%;
+  /* margin: 0; <-- remove margin if any */
+}
+.calendar-box {
+  display: flex;
+  background-color: #111111; /* single large box color */
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  /* You can adjust padding if you like */
+  padding: 2rem;
+  width: 100%;
+  max-width: 1200px; /* or desired width */
+  justify-content: space-between;
+  align-items: flex-start;
 }
 
 .calendar-header {
@@ -298,35 +319,80 @@ body {
 }
 
 .calendar-day.weekend {
-  color: #ff4d4d;
+  color: red;
+}
+.holiday {
+  color: red;
+  font-weight: bold;
 }
 
 .calendar-tiles {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 1rem;
   max-width: 400px;
   width: 100%;
+  height: 100%;
 }
 
-.tile {
+.separator {
+  width: 2px;
+  background-color: #ffffff;
+  margin: 0 2rem; /* horizontal spacing */
+}
+
+.tile{
+  background-color: #312e2e;
+  flex: 1; /* let it grow if you want to fill space */
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+} 
+ .tiles-container{
+  width: 100%;
+  height: 100%;
   background-color: #111111;
   border-radius: 8px;
   padding: 1.5rem;
   display: flex;
-  justify-content: center;
-  align-items: center;
+  flex-direction: column;
+  /* justify-content: center;
+  align-items:flex-start; */
   font-family: 'Playfair Display', serif;
   font-size: 1.2rem;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
   transition: all 0.3s ease;
   cursor: pointer;
-}
+} 
 
 .tile:hover {
   transform: translateY(-5px);
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
 }
+.no-start-message {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* or center, as needed */
+  gap: 1rem;
+}
+.crlocationtext{
+  margin: 30%;
+  font-style: italic;
+}
+.search-start-input {
+  width: 80%;    
+  padding: 0.5rem;
+  border: 1px solid #333;
+  border-radius: 4px;
+  background-color: #2a2a2a;
+  color: #fff;
+  outline: none;
+}
+
+.search-start-input::placeholder {
+  color: #999;
+}
+
 
 /* Responsive Design */
 @media (max-width: 768px) {
@@ -404,7 +470,6 @@ body {
     height: 30px;
     font-size: 0.8rem;
   }
-  
   .tile {
     padding: 1rem;
     font-size:1rem;
