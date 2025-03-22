@@ -514,4 +514,182 @@ router.get("/routesWithPlaces", async (req, res) => {
   }
 });
 
+// --- Endpoint: GET /api/landmarks/routesByPlaceNames ---
+// Expects query parameters: origin, destination, waypoints (pipe-separated place names), region (optional)
+// Returns a single route that goes via the given place names.
+router.get("/routesByPlaceNames", async (req, res) => {
+  try {
+    const { origin, destination, waypoints, region } = req.query;
+    
+    if (!origin || !destination) {
+      return res.status(400).json({ error: "Origin and destination are required" });
+    }
+    
+    console.log(`Creating route from "${origin}" to "${destination}" via waypoints: ${waypoints || 'none'}`);
+    
+    // First, geocode the origin and destination
+    const geocodeUrl = "https://maps.googleapis.com/maps/api/geocode/json";
+    
+    // Geocode the origin
+    const originGeocode = await axios.get(geocodeUrl, { 
+      params: { 
+        address: origin,
+        key: GOOGLE_MAPS_API_KEY,
+        ...(region && { region }) // Add region bias if provided
+      }
+    });
+    
+    if (originGeocode.data.status !== "OK" || !originGeocode.data.results[0]) {
+      return res.status(400).json({ error: "Could not geocode origin", details: originGeocode.data.status });
+    }
+    
+    const originLocation = originGeocode.data.results[0].geometry.location;
+    const originCoords = `${originLocation.lat},${originLocation.lng}`;
+    
+    // Geocode the destination
+    const destGeocode = await axios.get(geocodeUrl, { 
+      params: { 
+        address: destination,
+        key: GOOGLE_MAPS_API_KEY,
+        ...(region && { region }) // Add region bias if provided
+      }
+    });
+    
+    if (destGeocode.data.status !== "OK" || !destGeocode.data.results[0]) {
+      return res.status(400).json({ error: "Could not geocode destination", details: destGeocode.data.status });
+    }
+    
+    const destLocation = destGeocode.data.results[0].geometry.location;
+    const destCoords = `${destLocation.lat},${destLocation.lng}`;
+    
+    // Prepare the response object with origin and destination information
+    const result = {
+      origin: {
+        name: origin,
+        location: [originLocation.lng, originLocation.lat], // [lon, lat] format
+        formattedAddress: originGeocode.data.results[0].formatted_address
+      },
+      destination: {
+        name: destination,
+        location: [destLocation.lng, destLocation.lat], // [lon, lat] format
+        formattedAddress: destGeocode.data.results[0].formatted_address
+      },
+      waypoints: []
+    };
+    
+    // If waypoints are provided, geocode each of them
+    let waypointCoords = "";
+    
+    if (waypoints) {
+      const waypointNames = waypoints.split('|');
+      
+      // Geocode each waypoint
+      const waypointPromises = waypointNames.map(async (placeName, index) => {
+        try {
+          // Try with more specific query first - add destination to the query
+          let specificQuery = `${placeName} near ${destination}`;
+          console.log(`Trying geocode with specific query: "${specificQuery}"`);
+          
+          const waypointGeocode = await axios.get(geocodeUrl, { 
+            params: { 
+              address: specificQuery,
+              key: GOOGLE_MAPS_API_KEY,
+              ...(region && { region }) // Add region bias if provided
+            }
+          });
+          
+          if (waypointGeocode.data.status === "OK" && waypointGeocode.data.results[0]) {
+            const location = waypointGeocode.data.results[0].geometry.location;
+            return {
+              name: placeName,
+              location: [location.lng, location.lat], // [lon, lat] format
+              formattedAddress: waypointGeocode.data.results[0].formatted_address
+            };
+          } else {
+            console.warn(`Could not geocode waypoint "${placeName}": ${waypointGeocode.data.status}`);
+            
+            // Fallback - use destination coordinates with offset for points without specific location
+            const destinationLat = destLocation.lat;
+            const destinationLng = destLocation.lng;
+            
+            // Create a distributed pattern around destination for waypoints without coordinates
+            const angle = (index * 45) % 360; // Distribute in a circle
+            const distance = 0.01 + (index * 0.005); // Increasing distance from center
+            
+            // Calculate offset using trigonometry
+            const latOffset = distance * Math.cos(angle * Math.PI / 180);
+            const lngOffset = distance * Math.sin(angle * Math.PI / 180);
+            
+            console.log(`Using fallback coordinates for "${placeName}" near destination`);
+            
+            return {
+              name: placeName,
+              location: [destinationLng + lngOffset, destinationLat + latOffset],
+              formattedAddress: `${placeName} (near ${destination})`
+            };
+          }
+        } catch (error) {
+          console.error(`Error geocoding waypoint "${placeName}":`, error);
+          return null;
+        }
+      });
+      
+      // Wait for all geocoding requests to complete
+      const waypointResults = await Promise.all(waypointPromises);
+      
+      // Filter out null results and add valid waypoints to the result
+      const validWaypoints = waypointResults.filter(wp => wp !== null);
+      result.waypoints = validWaypoints;
+      
+      // Format waypoints for the directions API
+      waypointCoords = validWaypoints
+        .map(wp => `${wp.location[1]},${wp.location[0]}`) // Convert to lat,lng
+        .join('|');
+    }
+    
+    // Now that we have the coordinates, get the directions
+    const directionsUrl = "https://maps.googleapis.com/maps/api/directions/json";
+    const directionsParams = {
+      origin: originCoords,
+      destination: destCoords,
+      key: GOOGLE_MAPS_API_KEY,
+      ...(waypointCoords && { waypoints: waypointCoords }),
+    };
+    
+    const directionsResponse = await axios.get(directionsUrl, { params: directionsParams });
+    const data = directionsResponse.data;
+    
+    if (data.status !== "OK" || !data.routes || data.routes.length === 0) {
+      return res.status(400).json({ 
+        error: "No route found", 
+        details: data.status,
+        origin: result.origin,
+        destination: result.destination,
+        waypoints: result.waypoints
+      });
+    }
+    
+    const r = data.routes[0];
+    const leg = r.legs[0];
+    
+    // Add route information to the result
+    result.route = {
+      timeTaken: leg.duration.text,
+      timeValue: leg.duration.value, // Time in seconds
+      distance: leg.distance.text,
+      distanceValue: leg.distance.value, // Distance in meters
+      geometry: decodePolyline(r.overview_polyline.points),
+    };
+    
+    return res.json(result);
+    
+  } catch (err) {
+    console.error("Error in /routesByPlaceNames:", err.response?.data || err.message);
+    return res.status(500).json({ 
+      error: "Failed to create route with place names",
+      details: err.message
+    });
+  }
+});
+
 export default router;

@@ -29,6 +29,14 @@ const placeIcon = new L.Icon({
   popupAnchor: [1, -34],
 });
 
+// Add a fallback icon with a different color
+const fallbackIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+});
+
 // Helper function to calculate distance between two points
 function calculateDistance(lat1, lon1, lat2, lon2) {
   const R = 6371e3; // Earth radius in meters
@@ -46,15 +54,15 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 }
 
 // Route polylines component for the map
-function RoutePolylines({ route }) {
+function RoutePolylines({ routeGeometry }) {
   const map = useMap();
   
   useEffect(() => {
-    if (!route || !route.geometry || route.geometry.length === 0) return;
+    if (!routeGeometry || routeGeometry.length === 0) return;
     
     try {
       // Get all coordinates from the route
-      const allCoords = route.geometry;
+      const allCoords = routeGeometry;
       if (allCoords.length === 0) {
         console.warn("No coordinates found in route");
         return;
@@ -63,7 +71,16 @@ function RoutePolylines({ route }) {
       console.log(`Fitting map to ${allCoords.length} coordinates`);
       
       // Convert coordinates to Leaflet format and create bounds
-      const latLngs = allCoords.map(([lat, lng]) => [lat, lng]);
+      const latLngs = allCoords.map(coord => {
+        // Handle both array format and object format
+        if (Array.isArray(coord)) {
+          return [coord[0], coord[1]];
+        } else if (coord.lat && coord.lng) {
+          return [coord.lat, coord.lng];
+        }
+        return coord; // Already in correct format
+      });
+      
       const bounds = L.latLngBounds(latLngs);
       
       // Fit the map to the bounds with padding
@@ -71,13 +88,16 @@ function RoutePolylines({ route }) {
     } catch (error) {
       console.error("Error fitting map to bounds:", error);
     }
-  }, [route, map]);
+  }, [routeGeometry, map]);
   
-  if (!route || !route.geometry || route.geometry.length < 2) return null;
+  if (!routeGeometry || routeGeometry.length < 2) {
+    console.warn("Invalid route geometry for polyline:", routeGeometry);
+    return null;
+  }
   
   return (
     <Polyline
-      positions={route.geometry}
+      positions={routeGeometry}
       pathOptions={{
         color: "#2196F3",
         weight: 5,
@@ -133,110 +153,117 @@ export default function Summary() {
         
         console.log(`Fetching route ID: ${routeId} for user: ${email}`);
         const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        const response = await axios.get(`${baseUrl}/saved/${email}/${routeId}`);
         
-        const data = response.data;
-        console.log("Route data:", data);
-        
-        // Debug the places structure
-        if (data.places && data.places.length > 0) {
-          console.log("First place structure:", data.places[0]);
-        }
-        
-        // Set route data
-        setRouteData(data);
-        setOrigin(data.origin);
-        setDestination(data.destination);
-        
-        // Mark all places as checked by default and ensure they have lat/lng properties
-        const placesWithChecked = data.places.map(place => {
-          // Check if place already has lat/lng or needs conversion from latitude/longitude
-          const placeWithCoords = {
-            ...place,
-            checked: true,
-            // Ensure we have both formats available to handle different API requirements
-            lat: place.lat || place.latitude,
-            lng: place.lng || place.longitude,
-            latitude: place.latitude || place.lat,
-            longitude: place.longitude || place.lng
-          };
-          return placeWithCoords;
-        });
-        
-        console.log("Places with coords:", placesWithChecked);
-        setPlaces(placesWithChecked);
-        
-        // Get coordinates for origin and destination
-        await getCoordinatesFromAddresses(data.origin, data.destination);
-        
-        // If places have missing coordinates (longitude is null or undefined), try to look them up
-        const updatedPlaces = await Promise.all(placesWithChecked.map(async (place, index) => {
-          if (!place.longitude || !place.lng) {
-            // If we have a place name, try to get coordinates from it
-            if (place.name) {
-              try {
-                // Add the destination to make the search more specific to that region
-                const searchQuery = `${place.name} near ${data.destination}`;
-                console.log(`Looking up coordinates for place: ${searchQuery}`);
-                
-                const placeResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`);
-                const placeData = await placeResponse.json();
-                
-                if (placeData && placeData.length > 0) {
-                  console.log(`Found coordinates for ${place.name}:`, placeData[0]);
-                  
-                  // Update the place with the looked-up coordinates
-                  return {
-                    ...place,
-                    lat: parseFloat(placeData[0].lat),
-                    lng: parseFloat(placeData[0].lon),
-                    latitude: parseFloat(placeData[0].lat),
-                    longitude: parseFloat(placeData[0].lon)
-                  };
-                } else {
-                  console.warn(`No coordinates found for ${place.name}, using fallback near destination`);
-                  
-                  // If no coordinates found, use fallback coordinates near Shimla with specific offsets for each place
-                  // This ensures they appear in different locations around Shimla
-                  if (destCoords) {
-                    // Shimla coordinates as fallback center
-                    const shimlaLat = 31.1041526;
-                    const shimlaLng = 77.1709729;
+        // Using try-catch here to handle potential axios failures
+        try {
+          const response = await axios.get(`${baseUrl}/saved/${email}/${routeId}`);
+          const data = response.data;
+          console.log("Route data:", data);
+          
+          // Debug the places structure
+          if (data.places && data.places.length > 0) {
+            console.log("First place structure:", data.places[0]);
+          }
+          
+          // Set route data - ensure we have the necessary fields
+          setRouteData(data);
+          setOrigin(data.origin || "");
+          setDestination(data.destination || "");
+          
+          // Ensure we have a places array, even if empty
+          const placesData = data.places || [];
+          
+          // Mark all places as checked by default and ensure they have lat/lng properties
+          const placesWithChecked = placesData.map(place => {
+            // Check if place already has lat/lng or needs conversion from latitude/longitude
+            const placeWithCoords = {
+              ...place,
+              checked: true,
+              // Ensure we have both formats available to handle different API requirements
+              lat: place.lat || place.latitude,
+              lng: place.lng || place.longitude,
+              latitude: place.latitude || place.lat,
+              longitude: place.longitude || place.lng
+            };
+            return placeWithCoords;
+          });
+          
+          console.log("Places with coords:", placesWithChecked);
+          setPlaces(placesWithChecked);
+          
+          // Get coordinates for origin and destination - this should always happen
+          await getCoordinatesFromAddresses(data.origin, data.destination);
+          
+          // If places have missing coordinates, look them up
+          if (placesWithChecked.length > 0) {
+            const updatedPlaces = await Promise.all(placesWithChecked.map(async (place, index) => {
+              if (!place.longitude || !place.lng) {
+                // If we have a place name, try to get coordinates from it
+                if (place.name) {
+                  try {
+                    // Add the destination to make the search more specific to that region
+                    const searchQuery = `${place.name} near ${data.destination}`;
+                    console.log(`Looking up coordinates for place: ${searchQuery}`);
                     
-                    // Create a distributed pattern of points around Shimla based on the place index
-                    const angle = (index * 45) % 360; // Distribute in a circle
-                    const distance = 0.02 + (index * 0.005); // Increasing distance from center
+                    const placeResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`);
+                    const placeData = await placeResponse.json();
                     
-                    // Calculate offset using trigonometry
-                    const latOffset = distance * Math.cos(angle * Math.PI / 180);
-                    const lngOffset = distance * Math.sin(angle * Math.PI / 180);
-                    
-                    return {
-                      ...place,
-                      lat: shimlaLat + latOffset,
-                      lng: shimlaLng + lngOffset,
-                      latitude: shimlaLat + latOffset,
-                      longitude: shimlaLng + lngOffset
-                    };
+                    if (placeData && placeData.length > 0) {
+                      console.log(`Found coordinates for ${place.name}:`, placeData[0]);
+                      
+                      // Update the place with the looked-up coordinates
+                      return {
+                        ...place,
+                        lat: parseFloat(placeData[0].lat),
+                        lng: parseFloat(placeData[0].lon),
+                        latitude: parseFloat(placeData[0].lat),
+                        longitude: parseFloat(placeData[0].lon)
+                      };
+                    } else {
+                      console.warn(`No coordinates found for ${place.name}, using fallback near destination`);
+                      
+                      // Use fallback coordinates
+                      return createFallbackPlaceCoordinates(place, index, data.destination);
+                    }
+                  } catch (error) {
+                    console.error(`Error looking up coordinates for ${place.name}:`, error);
+                    return createFallbackPlaceCoordinates(place, index, data.destination);
                   }
+                } else {
+                  return createFallbackPlaceCoordinates(place, index, data.destination);
                 }
-              } catch (error) {
-                console.error(`Error looking up coordinates for ${place.name}:`, error);
               }
+              return place;
+            }));
+            
+            console.log("Updated places with looked-up coordinates:", updatedPlaces);
+            setPlaces(updatedPlaces);
+            
+            // Generate route geometry with the updated places
+            await fetchRouteGeometry(data.origin, data.destination, updatedPlaces);
+          } else {
+            // Even if no places, still create a direct route
+            await fetchRouteGeometry(data.origin, data.destination, []);
+          }
+        } catch (error) {
+          console.error("Error fetching route data:", error);
+          setError(`Failed to load route: ${error.message}`);
+          
+          // Still try to get basic origin/destination data from URL params or other sources if possible
+          if (!origin && !destination && routeId) {
+            // Try to parse routeId for origin/destination if it contains this information
+            const parts = routeId.split('_');
+            if (parts.length >= 2) {
+              setOrigin(parts[0] || "Unknown Origin");
+              setDestination(parts[1] || "Unknown Destination");
+              await getCoordinatesFromAddresses(parts[0], parts[1]);
             }
           }
-          return place;
-        }));
-        
-        console.log("Updated places with looked-up coordinates:", updatedPlaces);
-        setPlaces(updatedPlaces);
-        
-        // Generate route geometry with the updated places
-        await fetchRouteGeometry(data.origin, data.destination, updatedPlaces);
+        }
         
         setLoading(false);
       } catch (error) {
-        console.error("Error fetching route data:", error);
+        console.error("Error in fetch routine:", error);
         setError("Failed to load route details. Please try again.");
         setLoading(false);
       }
@@ -277,45 +304,174 @@ export default function Summary() {
   // Fetch route geometry
   async function fetchRouteGeometry(origin, destination, places) {
     try {
-      if (!originCoords || !destCoords) {
-        console.warn("Coordinates not available yet");
+      if (!origin || !destination) {
+        console.warn("Missing origin or destination for route generation");
+        setError("Origin or destination is missing");
         return;
       }
       
-      // Format coordinates for API
-      const originStr = `${originCoords.lat},${originCoords.lng}`;
-      const destStr = `${destCoords.lat},${destCoords.lng}`;
+      // Get only checked places
+      const checkedPlaces = places.filter(place => place.checked && place.name);
+      console.log("Checked places for routing:", checkedPlaces);
       
-      // Debug places before filtering
-      console.log("Places before filtering:", places);
+      // Instead of sending coordinates, send place names that the backend will resolve
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      let url = new URL(`${baseUrl}/api/landmarks/routesByPlaceNames`);
       
-      // Count places with valid coordinates
-      const placesWithCoords = places.filter(place => {
-        const lat = place.checked && (place.lat || place.latitude);
-        const lng = place.checked && (place.lng || place.longitude);
-        return place.checked && lat && lng;
-      });
-      console.log(`Places with valid coordinates: ${placesWithCoords.length} of ${places.length}`);
+      // Send text values rather than coordinates
+      url.searchParams.set("origin", origin);
+      url.searchParams.set("destination", destination);
       
-      // If no places have valid coordinates, use the fallback route
-      if (placesWithCoords.length === 0 && places.filter(p => p.checked).length > 0) {
-        console.warn("No places have valid coordinates, using fallback route");
+      // Send place names as waypoints
+      if (checkedPlaces.length > 0) {
+        const waypointNames = checkedPlaces.map(place => place.name).join('|');
+        url.searchParams.set("waypoints", waypointNames);
+        // Also send the region for better geocoding
+        url.searchParams.set("region", destination); // Use destination as region context
+      }
+      
+      console.log("Fetching route URL:", url.toString());
+      
+      try {
+        const response = await fetch(url.toString());
+        
+        if (response.ok) {
+          const data = await response.json();
+          processRouteData(data);
+          
+          // Also update the coordinates based on what the API returned
+          if (data.waypoints && data.waypoints.length > 0) {
+            // Update place coordinates based on the API result
+            updatePlaceCoordinates(data.waypoints, checkedPlaces);
+          }
+          
+          if (data.origin && data.origin.location) {
+            setOriginCoords({
+              lat: data.origin.location[1],
+              lng: data.origin.location[0]
+            });
+          }
+          
+          if (data.destination && data.destination.location) {
+            setDestCoords({
+              lat: data.destination.location[1],
+              lng: data.destination.location[0]
+            });
+          }
+          
+          return;
+        } else {
+          const errorText = await response.text();
+          console.error(`API Error (${response.status}):`, errorText);
+          
+          // Fallback to using the original method with coordinates
+          console.log("Falling back to original method with coordinates");
+          await fallbackToCoordinateMethod(origin, destination, places);
+        }
+      } catch (error) {
+        console.error("Network error fetching route:", error);
+        await fallbackToCoordinateMethod(origin, destination, places);
+      }
+    } catch (error) {
+      console.error("Error in fetchRouteGeometry:", error);
+      setError("Failed to fetch route. Using approximate route.");
+      createFallbackRoute();
+    }
+  }
+  
+  // Update place coordinates based on API response
+  function updatePlaceCoordinates(apiWaypoints, originalPlaces) {
+    if (!apiWaypoints || apiWaypoints.length === 0) {
+      console.log("No waypoints received from API to update coordinates");
+      return;
+    }
+    
+    console.log("Updating place coordinates with API data:", apiWaypoints);
+    
+    // Map the API waypoints to our places by name
+    const updatedPlaces = [...places];
+    
+    apiWaypoints.forEach((apiWaypoint) => {
+      if (!apiWaypoint.name || !apiWaypoint.location) {
+        console.warn("Invalid waypoint data:", apiWaypoint);
+        return;
+      }
+      
+      // Find matching place by name - check multiple ways
+      let placeIndex = -1;
+      
+      // First try exact match
+      placeIndex = updatedPlaces.findIndex(p => 
+        p.name && p.name.toLowerCase() === apiWaypoint.name.toLowerCase());
+      
+      // If no match, try partial match
+      if (placeIndex === -1) {
+        placeIndex = updatedPlaces.findIndex(p => 
+          p.name && apiWaypoint.name.toLowerCase().includes(p.name.toLowerCase()));
+      }
+      
+      // If still no match, try the reverse (API name in place name)
+      if (placeIndex === -1) {
+        placeIndex = updatedPlaces.findIndex(p => 
+          p.name && p.name.toLowerCase().includes(apiWaypoint.name.toLowerCase().split(',')[0]));
+      }
+      
+      if (placeIndex >= 0) {
+        console.log(`Updating coordinates for ${updatedPlaces[placeIndex].name} with data from ${apiWaypoint.name}`);
+        
+        // Update coordinates - API returns [lon, lat] format, we need lat/lng
+        updatedPlaces[placeIndex] = {
+          ...updatedPlaces[placeIndex],
+          lat: apiWaypoint.location[1],
+          lng: apiWaypoint.location[0],
+          latitude: apiWaypoint.location[1],
+          longitude: apiWaypoint.location[0],
+          formattedAddress: apiWaypoint.formattedAddress || updatedPlaces[placeIndex].name,
+          // Check if this is an approximate location based on the formatted address
+          isFallback: apiWaypoint.formattedAddress && apiWaypoint.formattedAddress.includes("(near ")
+        };
+      } else {
+        console.warn(`Could not find matching place for waypoint: ${apiWaypoint.name}`);
+      }
+    });
+    
+    console.log("Places after coordinate update:", updatedPlaces);
+    setPlaces(updatedPlaces);
+  }
+  
+  // Fallback to the original method using coordinates
+  async function fallbackToCoordinateMethod(origin, destination, places) {
+    // Make sure we have coordinates for origin and destination
+    if (!originCoords || !destCoords) {
+      await getCoordinatesFromAddresses(origin, destination);
+      
+      if (!originCoords || !destCoords) {
         createFallbackRoute();
         return;
       }
-      
-      // Prepare waypoints from places - try different property names
-      const waypoints = placesWithCoords
-        .map(place => {
-          // Try to get coordinates from either lat/lng or latitude/longitude format
-          const lat = place.lat || place.latitude;
-          const lng = place.lng || place.longitude;
-          return `${lat},${lng}`;
-        })
-        .join('|');
-      
-      console.log("Fetching route with waypoints:", waypoints);
-      
+    }
+    
+    // Format coordinates for API
+    const originStr = `${originCoords.lat},${originCoords.lng}`;
+    const destStr = `${destCoords.lat},${destCoords.lng}`;
+    
+    // Count places with valid coordinates
+    const placesWithCoords = places.filter(place => {
+      const lat = place.checked && (place.lat || place.latitude);
+      const lng = place.checked && (place.lng || place.longitude);
+      return place.checked && lat && lng;
+    });
+    
+    // Prepare waypoints from places with coordinates
+    const waypoints = placesWithCoords
+      .map(place => {
+        const lat = place.lat || place.latitude;
+        const lng = place.lng || place.longitude;
+        return `${lat},${lng}`;
+      })
+      .join('|');
+    
+    try {
       // Fetch route from backend
       const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       let url = new URL(`${baseUrl}/api/landmarks/routesWithPlaces`);
@@ -325,46 +481,27 @@ export default function Summary() {
         url.searchParams.set("waypoints", waypoints);
       }
       
-      console.log("Fetching route URL:", url.toString());
+      const response = await fetch(url.toString());
       
-      try {
-        // First attempt with waypoints
-        const response = await fetch(url.toString());
+      if (response.ok) {
+        const data = await response.json();
+        processRouteData(data);
+      } else {
+        // Try without waypoints
+        url = new URL(`${baseUrl}/api/landmarks/routesWithPlaces`);
+        url.searchParams.set("origin", originStr);
+        url.searchParams.set("destination", destStr);
         
-        // If successful, process the route data
-        if (response.ok) {
-          const data = await response.json();
-          processRouteData(data);
-          return;
+        const directResponse = await fetch(url.toString());
+        if (directResponse.ok) {
+          const directData = await directResponse.json();
+          processRouteData(directData);
         } else {
-          // If failed with waypoints, log the error
-          const errorText = await response.text();
-          console.error(`API Error with waypoints (${response.status}):`, errorText);
-          
-          // Try again without waypoints as a fallback
-          console.log("Retrying without waypoints for a direct route");
-          url = new URL(`${baseUrl}/api/landmarks/routesWithPlaces`);
-          url.searchParams.set("origin", originStr);
-          url.searchParams.set("destination", destStr);
-          
-          const directResponse = await fetch(url.toString());
-          if (directResponse.ok) {
-            const directData = await directResponse.json();
-            processRouteData(directData);
-          } else {
-            // If even the direct route fails, use our fallback
-            const directErrorText = await directResponse.text();
-            console.error(`API Error for direct route (${directResponse.status}):`, directErrorText);
-            createFallbackRoute();
-          }
+          createFallbackRoute();
         }
-      } catch (error) {
-        console.error("Error fetching route:", error);
-        createFallbackRoute();
       }
     } catch (error) {
-      console.error("Error fetching route geometry:", error);
-      setError("Failed to fetch route. Please try again.");
+      console.error("Error in fallback method:", error);
       createFallbackRoute();
     }
   }
@@ -373,23 +510,47 @@ export default function Summary() {
   function processRouteData(data) {
     console.log("Received route data:", data);
     
-    // Check if we have valid geometry data
-    if (!data || !data.geometry || !Array.isArray(data.geometry) || data.geometry.length < 2) {
-      console.warn("Invalid route geometry received:", data);
+    // Check if we have the new API format or the old one
+    if (data.route && data.route.geometry) {
+      // New API format (/routesByPlaceNames)
+      console.log(`Route has ${data.route.geometry.length} points`);
+      
+      // Convert to Leaflet format if needed (API returns [lon, lat], Leaflet wants [lat, lng])
+      const geometry = data.route.geometry.map(coord => [coord[1], coord[0]]);
+      
+      // Set route data
+      setRoute({
+        geometry,
+        time: data.route.timeValue || 0,
+        distance: data.route.distanceValue || 0
+      });
+    } 
+    else if (data.geometry && Array.isArray(data.geometry)) {
+      // Check if we have valid geometry data
+      if (data.geometry.length < 2) {
+        console.warn("Invalid route geometry received (less than 2 points):", data.geometry);
+        createFallbackRoute();
+        return;
+      }
+      
+      // Old API format with array of coordinates
+      console.log(`Route has ${data.geometry.length} points`);
+      
+      // Convert to Leaflet format [lat, lng] as Leaflet expects
+      const geometry = data.geometry.map(coord => [coord[1], coord[0]]);
+      
+      // Set route data
+      setRoute({
+        geometry,
+        time: data.time || 0,
+        distance: data.distance || 0
+      });
+    }
+    else {
+      console.warn("Invalid route data format received:", data);
       createFallbackRoute();
       return;
     }
-    
-    // Convert to Leaflet format [lat, lng] as Leaflet expects
-    const geometry = data.geometry.map(coord => [coord[1], coord[0]]);
-    console.log(`Route has ${geometry.length} points`);
-    
-    // Set route data
-    setRoute({
-      geometry,
-      time: data.time || 0,
-      distance: data.distance || 0
-    });
     
     // Route successfully loaded
     setLoading(false);
@@ -400,25 +561,92 @@ export default function Summary() {
     console.log("Creating fallback route between origin and destination");
     
     if (!originCoords || !destCoords) {
-      console.warn("Cannot create fallback route: missing coordinates");
-      setLoading(false);
-      setError("Could not display route: missing location data");
-      return;
+      console.warn("Cannot create fallback route: missing coordinates. Attempting to use default values.");
+      
+      // If we still have origin/destination text but not coords, try to create approximate coords
+      if (origin && destination) {
+        // Try to set approximate coordinates based on known places in India
+        const indiaCoords = {
+          "delhi": { lat: 28.7041, lng: 77.1025 },
+          "mumbai": { lat: 19.0760, lng: 72.8777 },
+          "bangalore": { lat: 12.9716, lng: 77.5946 },
+          "chennai": { lat: 13.0827, lng: 80.2707 },
+          "kolkata": { lat: 22.5726, lng: 88.3639 },
+          "hyderabad": { lat: 17.3850, lng: 78.4867 },
+          "pune": { lat: 18.5204, lng: 73.8567 },
+          "shimla": { lat: 31.1048, lng: 77.1734 },
+          "jaipur": { lat: 26.9124, lng: 75.7873 },
+          "goa": { lat: 15.2993, lng: 74.1240 },
+          "agra": { lat: 27.1767, lng: 78.0081 },
+          "kochi": { lat: 9.9312, lng: 76.2673 }
+        };
+        
+        // Try to match with known locations
+        const originLower = origin.toLowerCase();
+        const destLower = destination.toLowerCase();
+        
+        // Check for known cities in the addresses
+        for (const [city, coords] of Object.entries(indiaCoords)) {
+          if (originLower.includes(city) && !originCoords) {
+            setOriginCoords(coords);
+            console.log(`Set approximate origin coordinates for ${city}`);
+          }
+          if (destLower.includes(city) && !destCoords) {
+            setDestCoords(coords);
+            console.log(`Set approximate destination coordinates for ${city}`);
+          }
+        }
+        
+        // If still no coords, use center of India with some offset to show two points
+        if (!originCoords) {
+          setOriginCoords({ lat: 20.5937, lng: 78.9629 });
+          console.log("Using default center of India for origin");
+        }
+        if (!destCoords) {
+          setDestCoords({ lat: 21.5937, lng: 79.9629 }); // Slight offset
+          console.log("Using default center of India (with offset) for destination");
+        }
+      } else {
+        // If no origin/destination text, use center of India with offset
+        setOriginCoords({ lat: 20.5937, lng: 78.9629 });
+        setDestCoords({ lat: 21.5937, lng: 79.9629 }); // Slight offset
+        console.log("Using default India coordinates due to missing origin/destination");
+      }
     }
     
-    // Create a simple straight line route
-    const geometry = [
-      [originCoords.lat, originCoords.lng],
-      [destCoords.lat, destCoords.lng]
-    ];
+    // Double-check we have coordinates now
+    const startLat = originCoords?.lat || 20.5937;
+    const startLng = originCoords?.lng || 78.9629;
+    const endLat = destCoords?.lat || 21.5937;
+    const endLng = destCoords?.lng || 79.9629;
+    
+    // Create a more detailed route line with intermediate points
+    const pointCount = 5; // Number of intermediate points
+    const geometry = [];
+    
+    // Add start point
+    geometry.push([startLat, startLng]);
+    
+    // Add intermediate points for a smoother line
+    for (let i = 1; i < pointCount; i++) {
+      const fraction = i / pointCount;
+      const lat = startLat + (endLat - startLat) * fraction;
+      const lng = startLng + (endLng - startLng) * fraction;
+      geometry.push([lat, lng]);
+    }
+    
+    // Add end point
+    geometry.push([endLat, endLng]);
+    
+    console.log("Created fallback route with points:", geometry);
     
     // Estimate the distance using Haversine formula
     const R = 6371; // Earth radius in km
-    const dLat = (destCoords.lat - originCoords.lat) * Math.PI / 180;
-    const dLon = (destCoords.lng - originCoords.lng) * Math.PI / 180;
+    const dLat = (endLat - startLat) * Math.PI / 180;
+    const dLon = (endLng - startLng) * Math.PI / 180;
     const a = 
       Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(originCoords.lat * Math.PI / 180) * Math.cos(destCoords.lat * Math.PI / 180) * 
+      Math.cos(startLat * Math.PI / 180) * Math.cos(endLat * Math.PI / 180) * 
       Math.sin(dLon/2) * Math.sin(dLon/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     const distance = R * c;
@@ -434,6 +662,41 @@ export default function Summary() {
     
     setLoading(false);
     setError(null);
+  }
+  
+  // Helper function to create fallback coordinates for a place
+  function createFallbackPlaceCoordinates(place, index, destination) {
+    // If destination coordinates exist, use them as a reference
+    if (destCoords) {
+      // Use destination as center
+      const centerLat = destCoords.lat;
+      const centerLng = destCoords.lng;
+      
+      // Create a distributed pattern of points based on the place index
+      const angle = (index * 45) % 360; // Distribute in a circle
+      const distance = 0.02 + (index * 0.005); // Increasing distance from center
+      
+      // Calculate offset using trigonometry
+      const latOffset = distance * Math.cos(angle * Math.PI / 180);
+      const lngOffset = distance * Math.sin(angle * Math.PI / 180);
+      
+      return {
+        ...place,
+        lat: centerLat + latOffset,
+        lng: centerLng + lngOffset,
+        latitude: centerLat + latOffset,
+        longitude: centerLng + lngOffset
+      };
+    }
+    
+    // Default fallback - use center of India if we don't have destCoords
+    return {
+      ...place,
+      lat: 20.5937 + (index * 0.01),
+      lng: 78.9629 + (index * 0.01),
+      latitude: 20.5937 + (index * 0.01),
+      longitude: 78.9629 + (index * 0.01)
+    };
   }
   
   // Toggle place selection
@@ -467,42 +730,30 @@ export default function Summary() {
       
       switch(option) {
         case 'google':
-          // Google Maps URL in format that supports waypoints
+          // Build URL with search terms instead of coordinates for better reliability
           navUrl = 'https://www.google.com/maps/dir/';
           
-          // Add origin coordinates to the path
-          navUrl += `${originCoords.lat},${originCoords.lng}/`;
-          console.log("Added origin to URL:", navUrl);
+          // Add origin as a search term (more reliable than coordinates)
+          navUrl += encodeURIComponent(origin) + '/';
           
-          // Add waypoints to the path
+          // Add each waypoint by name
           if (checkedPlaces.length > 0) {
-            // Google Maps web has a limit (we'll keep it to 10 to be safe)
+            // Google Maps has a limit of around 10 waypoints
             const limitedWaypoints = checkedPlaces.slice(0, 10);
-            console.log("Selected waypoints:", limitedWaypoints.length);
             
-            // Filter out invalid waypoints
-            const validWaypoints = limitedWaypoints.filter(place => {
-              const lat = place.lat || place.latitude;
-              const lng = place.lng || place.longitude;
-              return lat && lng && !isNaN(lat) && !isNaN(lng);
-            });
-            console.log("Valid waypoints:", validWaypoints.length);
-            
-            // Add each waypoint to the URL path
-            validWaypoints.forEach((place, index) => {
-              const lat = place.lat || place.latitude;
-              const lng = place.lng || place.longitude;
-              navUrl += `${lat},${lng}/`;
-              console.log(`Added waypoint ${index+1}: ${place.name} at ${lat},${lng}`);
+            limitedWaypoints.forEach(place => {
+              // Use the place name which is more reliable than coordinates
+              if (place.name) {
+                navUrl += encodeURIComponent(place.name) + '/';
+              }
             });
           }
           
-          // Add destination to the path
-          navUrl += `${destCoords.lat},${destCoords.lng}`;
-          console.log("Added destination to URL:", navUrl);
+          // Add destination
+          navUrl += encodeURIComponent(destination);
           
-          // Add params for driving directions
-          navUrl += '?travelmode=driving';
+          // Add additional parameters for directions
+          navUrl += '/data=!4m2!4m1!3e0';  // 3e0 = driving mode
           
           break;
           
@@ -513,12 +764,11 @@ export default function Summary() {
           
         case 'apple':
           // Apple Maps URL format
-          navUrl = `http://maps.apple.com/?saddr=${originCoords.lat},${originCoords.lng}&daddr=${destCoords.lat},${destCoords.lng}`;
-          // Apple Maps doesn't support waypoints in the same way
+          navUrl = `http://maps.apple.com/?saddr=${encodeURIComponent(origin)}&daddr=${encodeURIComponent(destination)}`;
           break;
           
         default:
-          navUrl = `https://www.google.com/maps/dir/?api=1&origin=${originCoords.lat},${originCoords.lng}&destination=${destCoords.lat},${destCoords.lng}`;
+          navUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&travelmode=driving`;
       }
       
       console.log("Navigation URL:", navUrl);
@@ -595,34 +845,7 @@ export default function Summary() {
       </div>
       
       <div className="content-container">
-        {error ? (
-          <>
-            <div className="sidebar">
-              <div className="route-header">
-                <h3>Route Summary</h3>
-              </div>
-              <div className="error-message">
-                <p>{error}</p>
-              </div>
-              <div className="bottom-buttons">
-                <button id="navigate-btn" onClick={handleBack}>Back to Routes</button>
-              </div>
-            </div>
-            <div className="map-area">
-              {/* Fallback map */}
-              <MapContainer
-                center={[20.5937, 78.9629]} // India center
-                zoom={4}
-                style={{ height: "100%", width: "100%" }}
-              >
-                <TileLayer
-                  attribution='&copy; OpenStreetMap contributors'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-              </MapContainer>
-            </div>
-          </>
-        ) : loading ? (
+        {loading ? (
           <>
             <div className="sidebar">
               <div className="route-header">
@@ -653,21 +876,30 @@ export default function Summary() {
                 <h3>Route Summary</h3>
               </div>
               
-              {route && (
-                <div className="route-info">
-                  <div className="origin-dest-item start-point">
-                    <span>From: {origin}</span>
-                  </div>
-                  <div className="origin-dest-item end-point">
-                    <span>To: {destination}</span>
-                  </div>
+              {/* Always show route info section, even if there's an error */}
+              <div className="route-info">
+                <div className="origin-dest-item start-point">
+                  <span>From: {origin || "Unknown Origin"}</span>
+                </div>
+                <div className="origin-dest-item end-point">
+                  <span>To: {destination || "Unknown Destination"}</span>
+                </div>
+                {route && (
                   <div className="route-details">
                     <span>Time: {route.time ? (route.time / 60).toFixed(1) + ' min' : 'Calculating...'}</span>
                     <span>Distance: {route.distance ? (route.distance / 1000).toFixed(1) + ' km' : 'Calculating...'}</span>
                   </div>
+                )}
+              </div>
+              
+              {/* Show error message if any */}
+              {error && (
+                <div className="error-message">
+                  <p>{error}</p>
                 </div>
               )}
               
+              {/* Places section */}
               <div className="places-header">
                 <h4>Places to Visit</h4>
                 <span>{places.filter(place => place.checked).length}/{places.length} selected</span>
@@ -679,7 +911,7 @@ export default function Summary() {
                 ) : (
                   <>
                     <div className="origin-dest-item">
-                      <span className="start-point">Start: {origin}</span>
+                      <span className="start-point">Start: {origin || "Unknown Origin"}</span>
                     </div>
                     
                     {places.map((place, index) => (
@@ -689,7 +921,7 @@ export default function Summary() {
                         onMouseEnter={() => setHoveredPlace(place)}
                         onMouseLeave={() => setHoveredPlace(null)}
                       >
-                        <div className="place-name">{place.name}</div>
+                        <div className="place-name">{place.name || `Waypoint ${index + 1}`}</div>
                         <input
                           type="checkbox"
                           checked={place.checked}
@@ -699,12 +931,13 @@ export default function Summary() {
                     ))}
                     
                     <div className="origin-dest-item">
-                      <span className="end-point">End: {destination}</span>
+                      <span className="end-point">End: {destination || "Unknown Destination"}</span>
                     </div>
                   </>
                 )}
               </div>
               
+              {/* Always show action buttons */}
               <div className="bottom-buttons">
                 <button id="navigate-btn" onClick={handleNavigateClick}>Navigate</button>
                 <button id="submit-btn" onClick={submitCheckedPlaces}>Submit</button>
@@ -720,61 +953,95 @@ export default function Summary() {
             </div>
             
             <div className="map-area">
-              {originCoords && destCoords && (
-                <MapContainer
-                  center={[originCoords.lat, originCoords.lng]}
-                  zoom={7}
-                  style={{ height: "100%", width: "100%" }}
-                >
-                  <TileLayer
-                    attribution='&copy; OpenStreetMap contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              {/* Always show the map */}
+              <MapContainer
+                center={originCoords ? [originCoords.lat, originCoords.lng] : [20.5937, 78.9629]}
+                zoom={originCoords ? 7 : 4}
+                style={{ height: "100%", width: "100%" }}
+              >
+                <TileLayer
+                  attribution='&copy; OpenStreetMap contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                
+                {/* Route line - only show if we have route data */}
+                {route && route.geometry && route.geometry.length > 1 && (
+                  <RoutePolylines routeGeometry={route.geometry} />
+                )}
+                
+                {/* Origin marker */}
+                {originCoords && (
+                  <Marker position={[originCoords.lat, originCoords.lng]} icon={originIcon}>
+                    <Popup>Origin: {origin}</Popup>
+                  </Marker>
+                )}
+                
+                {/* Destination marker */}
+                {destCoords && (
+                  <Marker position={[destCoords.lat, destCoords.lng]} icon={destinationIcon}>
+                    <Popup>Destination: {destination}</Popup>
+                  </Marker>
+                )}
+
+                {/* If we have origin and destination markers but no route, create a simple line */}
+                {originCoords && destCoords && (!route || !route.geometry || route.geometry.length < 2) && (
+                  <Polyline
+                    positions={[
+                      [originCoords.lat, originCoords.lng],
+                      [destCoords.lat, destCoords.lng]
+                    ]}
+                    pathOptions={{
+                      color: "#2196F3",
+                      weight: 5,
+                      opacity: 0.7,
+                      dashArray: "10, 10" // Dashed line to indicate it's an approximation
+                    }}
                   />
+                )}
+                
+                {/* Place markers - only for checked places with valid coordinates */}
+                {places.filter(p => p.checked && (p.lat || p.latitude) && (p.lng || p.longitude)).map((place, idx) => {
+                  // Get coordinates using either format
+                  const lat = place.lat || place.latitude;
+                  const lng = place.lng || place.longitude;
                   
-                  {/* Route line */}
-                  {route && <RoutePolylines route={route} />}
+                  // Skip if coordinates are missing
+                  if (!lat || !lng) return null;
                   
-                  {/* Origin marker */}
-                  {originCoords && (
-                    <Marker position={[originCoords.lat, originCoords.lng]} icon={originIcon}>
-                      <Popup>Origin: {origin}</Popup>
+                  // Choose icon based on whether this is a fallback location
+                  const icon = place.isFallback ? fallbackIcon : placeIcon;
+                  
+                  return (
+                    <Marker 
+                      key={`place-marker-${idx}`}
+                      position={[lat, lng]} 
+                      icon={icon}
+                    >
+                      <Popup>
+                        <div>
+                          <strong>{place.name || `Waypoint ${idx + 1}`}</strong>
+                          {place.isFallback && (
+                            <div style={{ color: 'orange', marginTop: '5px' }}>
+                              Approximate location
+                            </div>
+                          )}
+                          {place.formattedAddress && place.formattedAddress !== place.name && (
+                            <div style={{ fontSize: '0.9em', marginTop: '5px' }}>
+                              {place.formattedAddress}
+                            </div>
+                          )}
+                        </div>
+                      </Popup>
                     </Marker>
-                  )}
-                  
-                  {/* Destination marker */}
-                  {destCoords && (
-                    <Marker position={[destCoords.lat, destCoords.lng]} icon={destinationIcon}>
-                      <Popup>Destination: {destination}</Popup>
-                    </Marker>
-                  )}
-                  
-                  {/* Place markers */}
-                  {places.filter(p => p.checked).map((place, idx) => {
-                    // Get coordinates using either format
-                    const lat = place.lat || place.latitude;
-                    const lng = place.lng || place.longitude;
-                    
-                    // Skip if coordinates are missing
-                    if (!lat || !lng) return null;
-                    
-                    return (
-                      <Marker 
-                        key={`place-marker-${idx}`}
-                        position={[lat, lng]} 
-                        icon={placeIcon}
-                      >
-                        <Popup>{place.name}</Popup>
-                      </Marker>
-                    );
-                  })}
-                </MapContainer>
-              )}
+                  );
+                })}
+              </MapContainer>
               
               {/* Hover box for place details */}
               {hoveredPlace && (
                 <div className="hoverbox">
                   <div className="hoverbox-info">
-                    <p className="hoverbox-name">{hoveredPlace.name}</p>
+                    <p className="hoverbox-name">{hoveredPlace.name || "Waypoint"}</p>
                   </div>
                 </div>
               )}
