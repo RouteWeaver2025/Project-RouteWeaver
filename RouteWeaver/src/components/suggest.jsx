@@ -45,47 +45,32 @@ async function getPlacesAlongRoute(geometry, keywords = []) {
     
     console.log(`Total route distance: ${(totalDistance/1000).toFixed(1)}km`);
     
+    // Adjust sampling strategy based on route length
+    // For longer routes, sample more points and space them more evenly
+    const routeLengthKm = totalDistance / 1000;
+    
     // Get strategic points along the route - start, middle segments, and end
     // For longer routes, sample more points
-    const numSamplePoints = totalDistance > 100000 ? 5 : 
-                           totalDistance > 50000 ? 4 : 3;
+    const numSamplePoints = routeLengthKm > 250 ? 7 : 
+                           routeLengthKm > 150 ? 5 : 
+                           routeLengthKm > 50 ? 4 : 3;
     
+    console.log(`Using ${numSamplePoints} sampling points for ${routeLengthKm.toFixed(1)}km route`);
+    
+    // Create evenly distributed points along the route
     const sampledPoints = [];
     
-    // Always include start point
-    sampledPoints.push(geometry[0]);
+    // Calculate segment length
+    const segmentLength = (geometry.length - 1) / (numSamplePoints - 1);
     
-    // Add evenly distributed middle points
-    if (numSamplePoints > 2) {
-      const segmentLength = totalDistance / (numSamplePoints - 1);
-      let accumulatedDistance = 0;
-      let lastSampledDistance = 0;
-      
-      for (let i = 0; i < geometry.length - 1; i++) {
-        const current = geometry[i];
-        const next = geometry[i + 1];
-        const segmentDistance = calculateDistance(
-          current[1], current[0],
-          next[1], next[0]
-        );
-        
-        accumulatedDistance += segmentDistance;
-        
-        // Check if we've traveled far enough to sample another point
-        if (accumulatedDistance - lastSampledDistance >= segmentLength) {
-          sampledPoints.push(next);
-          lastSampledDistance = accumulatedDistance;
-        }
-      }
+    // Sample points at even intervals
+    for (let i = 0; i < numSamplePoints; i++) {
+      // Calculate index
+      const index = Math.min(Math.round(i * segmentLength), geometry.length - 1);
+      sampledPoints.push(geometry[index]);
     }
     
-    // Always include end point if not already included
-    const lastPoint = geometry[geometry.length - 1];
-    if (sampledPoints.length < numSamplePoints) {
-      sampledPoints.push(lastPoint);
-    }
-    
-    console.log(`Sampling ${sampledPoints.length} points evenly distributed along the route`);
+    console.log(`Sampling ${sampledPoints.length} evenly spaced points along the route`);
     
     // Add delay between requests to avoid rate limiting
     const placesPromises = sampledPoints.map(async ([lon, lat], index) => {
@@ -125,161 +110,237 @@ async function getPlacesAlongRoute(geometry, keywords = []) {
       }
     });
     
-    // Convert to array and limit to a reasonable number
+    // Convert to array
     let places = Array.from(uniquePlaces.values());
     
-    // Sort places by distance from the route for better distribution
-    places = places.map(place => {
-      const distanceToRoute = minDistanceToRoute(place.lat, place.lon, geometry);
-      return { ...place, distanceToRoute };
-    });
+    console.log(`Found ${places.length} unique places before filtering`);
     
-    // Prioritize places with good ratings and close to route
-    places.sort((a, b) => {
-      // First sort by distance to route
-      const routeDistanceDiff = a.distanceToRoute - b.distanceToRoute;
-      
-      // If distances are similar, prioritize higher ratings
-      if (Math.abs(routeDistanceDiff) < 1000) { // Within 1km of each other
-        const ratingA = typeof a.rating === 'number' ? a.rating : 0;
-        const ratingB = typeof b.rating === 'number' ? b.rating : 0;
-        if (ratingA !== ratingB) return ratingB - ratingA;
-      }
-      
-      return routeDistanceDiff;
-    });
-    
-    // For very long routes, ensure we have a good distribution
-    if (totalDistance > 100000 && places.length > 10) {
-      places = distributePointsEvenly(places, geometry, 15);
+    if (places.length === 0) {
+      console.warn("No places found from any sampling point");
+      return [];
     }
     
-    console.log(`Final list: ${places.length} unique places found along the route`);
-    return places;
+    // Calculate distance to route for each place
+    places = places.map(place => {
+      try {
+        const distanceToRoute = minDistanceToRoute(place.lat, place.lon, geometry);
+        const position = findPositionAlongRoute(place.lat, place.lon, geometry);
+        return { 
+          ...place, 
+          distanceToRoute: isNaN(distanceToRoute) ? 20000 : distanceToRoute,
+          position: isNaN(position) ? 0.5 : position 
+        };
+      } catch (error) {
+        console.error("Error calculating place metrics:", error);
+        // Default values if calculation fails
+        return { ...place, distanceToRoute: 20000, position: 0.5 };
+      }
+    });
+    
+    // Remove places that are too far from the route (more than 20km)
+    const nearbyPlaces = places.filter(place => place.distanceToRoute < 20000);
+    console.log(`Filtered to ${nearbyPlaces.length} places within 20km of route`);
+    
+    // Use the bin distribution approach to ensure even coverage
+    const distributedPlaces = distributePointsEvenly(nearbyPlaces, 15);
+    
+    console.log(`Final list: ${distributedPlaces.length} unique places distributed along the route`);
+    return distributedPlaces;
   } catch (error) {
     console.error('Error fetching places along route:', error);
+    // Return empty array on error
     return [];
   }
 }
 
-// Helper function to calculate minimum distance from a point to a route
-function minDistanceToRoute(lat, lon, routeGeometry) {
-  let minDistance = Infinity;
-  
-  for (let i = 0; i < routeGeometry.length - 1; i++) {
-    const segmentStart = routeGeometry[i];
-    const segmentEnd = routeGeometry[i + 1];
+// Find approximate position along route (0-1)
+function findPositionAlongRoute(lat, lon, routeGeometry) {
+  try {
+    if (!routeGeometry || routeGeometry.length < 2) {
+      return 0.5; // Default to middle if route is invalid
+    }
     
-    const distance = distanceToLineSegment(
-      lat, lon,
-      segmentStart[1], segmentStart[0],
-      segmentEnd[1], segmentEnd[0]
-    );
-    
-    minDistance = Math.min(minDistance, distance);
-  }
-  
-  return minDistance;
-}
-
-// Calculate distance from point to line segment
-function distanceToLineSegment(px, py, x1, y1, x2, y2) {
-  const A = px - x1;
-  const B = py - y1;
-  const C = x2 - x1;
-  const D = y2 - y1;
-
-  const dot = A * C + B * D;
-  const len_sq = C * C + D * D;
-  let param = -1;
-  
-  if (len_sq !== 0) param = dot / len_sq;
-
-  let xx, yy;
-
-  if (param < 0) {
-    xx = x1;
-    yy = y1;
-  } else if (param > 1) {
-    xx = x2;
-    yy = y2;
-  } else {
-    xx = x1 + param * C;
-    yy = y1 + param * D;
-  }
-
-  const dx = px - xx;
-  const dy = py - yy;
-  
-  // Convert to meters using haversine
-  return calculateDistance(px, py, xx, yy);
-}
-
-// Distribute points more evenly along the route
-function distributePointsEvenly(places, routeGeometry, maxPlaces) {
-  if (places.length <= maxPlaces) return places;
-  
-  // Calculate position along route for each place (as percentage)
-  const placesWithPosition = places.map(place => {
-    const { lat, lon } = place;
     let minDist = Infinity;
     let closestPointIndex = 0;
     
     // Find closest point on route
     for (let i = 0; i < routeGeometry.length; i++) {
-      const dist = calculateDistance(
-        lat, lon,
-        routeGeometry[i][1], routeGeometry[i][0]
-      );
+      const routeLat = routeGeometry[i][1]; // Route points are [lon, lat]
+      const routeLon = routeGeometry[i][0];
+      
+      const dist = calculateDistance(lat, lon, routeLat, routeLon);
+      
       if (dist < minDist) {
         minDist = dist;
         closestPointIndex = i;
       }
     }
     
-    // Calculate position as percentage along route
-    const position = closestPointIndex / (routeGeometry.length - 1);
-    return { ...place, position };
-  });
+    // Return position as percentage along route
+    return closestPointIndex / Math.max(1, routeGeometry.length - 1);
+  } catch (error) {
+    console.error("Error in findPositionAlongRoute:", error);
+    return 0.5; // Default to middle
+  }
+}
+
+// Distribute points evenly along the route (binning approach)
+function distributePointsEvenly(places, maxPlaces) {
+  // If we don't have enough places, return all of them
+  if (places.length <= maxPlaces) return places;
   
-  // Sort by position
-  placesWithPosition.sort((a, b) => a.position - b.position);
+  // If we have no places at all, return empty array
+  if (places.length === 0) return [];
   
-  // Create bins and distribute places
+  console.log(`Distributing ${places.length} places into bins...`);
+  
+  // Sort places by position along route
+  places.sort((a, b) => a.position - b.position);
+  
+  // Create bins along the route
+  const numBins = Math.min(maxPlaces, 15);
   const result = [];
-  const numBins = maxPlaces;
   
   for (let i = 0; i < numBins; i++) {
-    // Find places in this bin's range
+    // Define bin range
     const binStart = i / numBins;
     const binEnd = (i + 1) / numBins;
     
-    const placesInBin = placesWithPosition.filter(
-      p => p.position >= binStart && p.position < binEnd
+    // Find places in this bin
+    const placesInBin = places.filter(p => 
+      p.position >= binStart && p.position < binEnd
     );
     
-    // Take best rated place from each bin
+    console.log(`Bin ${i+1}/${numBins} (${binStart.toFixed(2)}-${binEnd.toFixed(2)}): ${placesInBin.length} places`);
+    
     if (placesInBin.length > 0) {
+      // Sort by rating and distance to route
       placesInBin.sort((a, b) => {
         const ratingA = typeof a.rating === 'number' ? a.rating : 0;
         const ratingB = typeof b.rating === 'number' ? b.rating : 0;
-        return ratingB - ratingA;
+        const ratingDiff = ratingB - ratingA;
+        
+        // Prioritize rating unless the distance difference is significant
+        if (Math.abs(ratingDiff) > 1) return ratingDiff;
+        
+        // Otherwise use distance to route
+        return a.distanceToRoute - b.distanceToRoute;
       });
       
+      // Take best place from this bin
       result.push(placesInBin[0]);
     }
   }
   
+  // Safety check - if no places were selected from bins but we had input places
+  // just return some of the original places to avoid returning nothing
+  if (result.length === 0 && places.length > 0) {
+    console.log("No places selected from bins - using original places");
+    // Return a few of the original places sorted by rating
+    const backupPlaces = [...places].sort((a, b) => {
+      const ratingA = typeof a.rating === 'number' ? a.rating : 0;
+      const ratingB = typeof b.rating === 'number' ? b.rating : 0;
+      return ratingB - ratingA;
+    }).slice(0, 5);
+    return backupPlaces;
+  }
+  
+  console.log(`Selected ${result.length} distributed places from ${places.length} total`);
   return result;
 }
 
+// Helper function to calculate minimum distance from a point to a route
+function minDistanceToRoute(lat, lon, routeGeometry) {
+  try {
+    if (!routeGeometry || routeGeometry.length < 2) {
+      return 20000; // Default large distance for invalid route
+    }
+    
+    let minDistance = Infinity;
+    
+    for (let i = 0; i < routeGeometry.length - 1; i++) {
+      const segmentStart = routeGeometry[i];
+      const segmentEnd = routeGeometry[i + 1];
+      
+      const distance = distanceToLineSegment(
+        lat, lon,
+        segmentStart[1], segmentStart[0], // Route points are [lon, lat]
+        segmentEnd[1], segmentEnd[0]
+      );
+      
+      minDistance = Math.min(minDistance, distance);
+    }
+    
+    return minDistance;
+  } catch (error) {
+    console.error("Error in minDistanceToRoute:", error);
+    return 20000; // Default large distance
+  }
+}
+
+// Calculate distance from point to line segment
+function distanceToLineSegment(px, py, x1, y1, x2, y2) {
+  try {
+    const A = px - x1;
+    const B = py - y1;
+    const C = x2 - x1;
+    const D = y2 - y1;
+  
+    const dot = A * C + B * D;
+    const len_sq = C * C + D * D;
+    let param = -1;
+    
+    if (len_sq !== 0) param = dot / len_sq;
+  
+    let xx, yy;
+  
+    if (param < 0) {
+      xx = x1;
+      yy = y1;
+    } else if (param > 1) {
+      xx = x2;
+      yy = y2;
+    } else {
+      xx = x1 + param * C;
+      yy = y1 + param * D;
+    }
+  
+    // Convert to meters using haversine
+    return calculateDistance(px, py, xx, yy);
+  } catch (error) {
+    console.error("Error in distanceToLineSegment:", error);
+    return Infinity;
+  }
+}
+
 // Helper function to calculate distance between two points
-function calculateDistance(point1, point2) {
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  // Handle different input formats (coordinate pairs or separate arguments)
+  if (Array.isArray(lat1)) {
+    // Format: calculateDistance([lat1, lon1], [lat2, lon2])
+    lon2 = lat2[1];
+    lat2 = lat2[0];
+    lon1 = lat1[1];
+    lat1 = lat1[0];
+  }
+  
+  // Convert to numbers if they're strings
+  lat1 = parseFloat(lat1);
+  lon1 = parseFloat(lon1);
+  lat2 = parseFloat(lat2);
+  lon2 = parseFloat(lon2);
+  
+  // Validate coordinates
+  if (isNaN(lat1) || isNaN(lon1) || isNaN(lat2) || isNaN(lon2)) {
+    console.warn("Invalid coordinates in distance calculation:", { lat1, lon1, lat2, lon2 });
+    return Infinity;
+  }
+  
   const R = 6371e3; // Earth's radius in meters
-  const φ1 = point1[1] * Math.PI / 180; // lat1 in radians
-  const φ2 = point2[1] * Math.PI / 180; // lat2 in radians
-  const Δφ = (point2[1] - point1[1]) * Math.PI / 180;
-  const Δλ = (point2[0] - point1[0]) * Math.PI / 180;
+  const φ1 = lat1 * Math.PI / 180; // lat1 in radians
+  const φ2 = lat2 * Math.PI / 180; // lat2 in radians
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
 
   const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
           Math.cos(φ1) * Math.cos(φ2) *
@@ -500,8 +561,8 @@ export default function SuggestPage() {
       setLoadingPlaces(true);
       try {
         const foundPlaces = await getPlacesAlongRoute(chosen.geometry, selectedKeywords);
-        // Default each fetched place to checked=true.
-        const placesWithCheck = foundPlaces.map(p => ({ ...p, checked: true }));
+        // Set each fetched place to unchecked by default
+        const placesWithCheck = foundPlaces.map(p => ({ ...p, checked: false }));
         setPlaces(placesWithCheck);
         setFetchedForIndex(selectedBaseIndex);
       } catch (err) {
@@ -762,24 +823,33 @@ export default function SuggestPage() {
               </MapContainer>
             ) : (
               // Phase 2: Single route (viaRoute)
-              viaRoute && (
-                <MapContainer
-                  center={[originCoords.lat, originCoords.lon]}
-                  zoom={7}
-                  style={{ height: "100%", width: "100%" }}
-                >
-                  <TileLayer
-                    attribution='&copy; OpenStreetMap contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
+              <MapContainer
+                center={[originCoords.lat, originCoords.lon]}
+                zoom={7}
+                style={{ height: "100%", width: "100%" }}
+              >
+                <TileLayer
+                  attribution='&copy; OpenStreetMap contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                {viaRoute ? (
                   <RoutePolylines routes={[viaRoute]} selectedIndex={0} />
-                  <Marker position={[originCoords.lat, originCoords.lon]} />
-                  {destCoords && <Marker position={[destCoords.lat, destCoords.lon]} />}
-                  {hoveredPlace && (
-                    <Marker position={[hoveredPlace.lat, hoveredPlace.lon]} icon={hoveredIcon} />
-                  )}
-                </MapContainer>
-              )
+                ) : baseRoutes[selectedBaseIndex] ? (
+                  <RoutePolylines routes={[baseRoutes[selectedBaseIndex]]} selectedIndex={0} />
+                ) : null}
+                <Marker position={[originCoords.lat, originCoords.lon]} />
+                {destCoords && <Marker position={[destCoords.lat, destCoords.lon]} />}
+                {places.filter(p => p.checked).map((place, idx) => (
+                  <Marker 
+                    key={`place-marker-${idx}`}
+                    position={[place.lat, place.lon]} 
+                    icon={hoveredIcon}
+                  />
+                ))}
+                {hoveredPlace && !places.find(p => p.id === hoveredPlace.id && p.checked) && (
+                  <Marker position={[hoveredPlace.lat, hoveredPlace.lon]} icon={hoveredIcon} />
+                )}
+              </MapContainer>
             )
           )}
           {hoveredPlace && (
@@ -798,7 +868,7 @@ export default function SuggestPage() {
               <div className="hoverbox-info">
                 <p className="hoverbox-name">{hoveredPlace.name}</p>
                 <p className="hoverbox-meta">
-                  ⭐ {hoveredPlace.rating} | 👥 {hoveredPlace.visitors}/day
+                  ⭐ {hoveredPlace.rating} | 📍 {hoveredPlace.vicinity || ""}
                 </p>
               </div>
             </div>
