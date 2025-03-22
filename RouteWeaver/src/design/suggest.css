@@ -131,17 +131,23 @@
   margin: 8px 0;
   border: none;
   border-radius: 8px;
-  background: white;
+  background: rgb(203, 201, 201);
   cursor: pointer;
   text-align: left;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
+.place-item .checkbox-container {
+  margin-left: 0px;
+}
+
 
 .place-info {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
-
 .place-name {
   font-weight: 600;
   color: #333;
@@ -156,11 +162,6 @@
   color: #666;
 }
 
-.place-rating, .place-visitors {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
 
 /* Bottom buttons */
 .bottom-buttons {
@@ -201,8 +202,8 @@
 /* Hoverbox overlay for place details */
 .hoverbox {
   position: absolute;
-  bottom: 20px;
-  right: 20px;
+  bottom: 130px;
+  left: 20px;
   background: white;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.3);
@@ -242,6 +243,54 @@
   font-size: 14px;
   color: #666;
 }
+
+/* Navigation Options Box (shown when "Navigate" button is clicked) */
+.navbox {
+  position: absolute;
+  top:120px; /* adjust position as needed */
+  right: 420px;
+  width: 500px;
+  height: fit-content;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  z-index: 1200;
+  max-width: 750px;
+  padding: 10px;
+  display: flex;
+  flex-direction: row;
+  align-items: space-between;
+}
+
+.navbox-title {
+  font-weight: bold;
+  margin-bottom: 10px;
+  font-size: 16px;
+  color: #333;
+}
+
+.navbox-options {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  width: 100%;
+}
+
+.navbox-option {
+  background: #da9e48;
+  border: none;
+  border-radius: 6px;
+  padding: 8px;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.navbox-option:hover {
+  background: #b74c1a;
+}
+
 
 /* Responsive adjustments */
 @media screen and (max-width: 800px) {

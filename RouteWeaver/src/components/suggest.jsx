@@ -4,10 +4,9 @@ import { MapContainer, TileLayer, Polyline, useMap, Marker } from "react-leaflet
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "../design/suggest.css";
-import fallbackImg from "../assets/homeimg.jpg"; // fallback image for places
+import fallbackImg from "../assets/homeimg.jpg";
 
-/* ----------------- OSRM-BASED ROUTING ----------------- */
-
+// --------------------- GEOCODING ---------------------
 const coordinatesCache = new Map();
 async function getCoordinates(address) {
   try {
@@ -26,131 +25,391 @@ async function getCoordinates(address) {
   }
 }
 
-const routesCache = new Map();
-async function getRoutes(originCoords, destCoords) {
+// --------------------- PLACES ALONG ROUTE ---------------------
+async function getPlacesAlongRoute(geometry, keywords = []) {
   try {
-    const cacheKey = `${originCoords.lon},${originCoords.lat}-${destCoords.lon},${destCoords.lat}`;
-    if (routesCache.has(cacheKey)) return routesCache.get(cacheKey);
-    const originStr = `${originCoords.lon.toFixed(6)},${originCoords.lat.toFixed(6)}`;
-    const destStr = `${destCoords.lon.toFixed(6)},${destCoords.lat.toFixed(6)}`;
-    const url = `https://router.project-osrm.org/route/v1/driving/${originStr};${destStr}?overview=full&alternatives=true&steps=true&geometries=geojson`;
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error(`OSRM error: ${resp.status}`);
-    const data = await resp.json();
-    if (!data.routes || data.routes.length === 0) throw new Error("No routes found from OSRM");
-    const routes = data.routes.slice(0, 4).map(r => ({
-      timeTaken: formatDuration(r.duration),
-      distance: formatDistance(r.distance),
-      geometry: r.geometry.coordinates, // [lon, lat]
-    }));
-    routesCache.set(cacheKey, routes);
-    return routes;
-  } catch (err) {
-    console.error("Error fetching routes:", err);
-    return [];
-  }
-}
-
-function formatDuration(seconds) {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  return hours > 0 ? `${hours}hrs ${minutes}min` : `${minutes}min`;
-}
-function formatDistance(meters) {
-  return `${Math.round(meters / 1000)}km`;
-}
-
-/* ----------------- GOOGLE PLACES VIA BACKEND ----------------- */
-
-const keywordToTypeMap = {
-  Lake: "natural_feature",
-  Viewpoint: "tourist_attraction",
-  Museum: "museum",
-  Park: "park",
-  Beach: "natural_feature",
-};
-
-async function fetchPlacesFromBackend(lat, lng, type, radius = 10000) {
-  const url = new URL("http://localhost:5000/api/landmarks/places");
-  url.searchParams.set("lat", lat);
-  url.searchParams.set("lng", lng);
-  if (type) url.searchParams.set("type", type);
-  url.searchParams.set("radius", radius);
-  console.log("Fetching places from backend:", url.toString());
-  const resp = await fetch(url.toString());
-  if (!resp.ok) {
-    console.error("Backend places fetch error:", resp.status);
-    return [];
-  }
-  const data = await resp.json();
-  return data.results || [];
-}
-
-async function getPlacesAlongRoute(geometry, keywords) {
-  // Use fallback if no keywords are selected.
-  const effectiveKeywords = keywords && keywords.length > 0 ? keywords : [""];
-  if (geometry.length < 2) {
-    console.warn("Route geometry too short to sample");
-    return [];
-  }
-  // Sample at 20%, 40%, 60%, and 80% along the route for broader coverage.
-  const samplePoints = [
-      geometry[Math.floor(geometry.length * 0.1)], // 10%
-      geometry[Math.floor(geometry.length * 0.3)], // 30%
-      geometry[Math.floor(geometry.length * 0.5)], // 50%
-      geometry[Math.floor(geometry.length * 0.7)], // 70%
-      geometry[Math.floor(geometry.length * 0.9)]  // 90%
-  ];
-  let allPlaces = [];
-  for (const point of samplePoints) {
-    const [lon, lat] = point; // OSRM returns [lon, lat]
-    for (const kw of effectiveKeywords) {
-      // If keyword is empty, let backend return default "tourist_attraction"
-      const type = kw ? (keywordToTypeMap[kw] || "tourist_attraction") : "";
-      const places = await fetchPlacesFromBackend(lat, lon, type);
-      allPlaces = allPlaces.concat(
-        places.map(res => ({
-          name: res.name || "Unnamed Place",
-          lat: res.geometry?.location?.lat || lat,
-          lon: res.geometry?.location?.lng || lon,
-          rating: res.rating ? res.rating.toFixed(1) : (4 + Math.random()).toFixed(1),
-          visitors: Math.floor(800 + Math.random() * 1200),
-          photoRef: res.photos && res.photos.length > 0 ? res.photos[0].photo_reference : null,
-          type: type || "tourist_attraction"
-        }))
+    // Ensure we have a valid geometry
+    if (!geometry || geometry.length < 2) {
+      console.warn("Invalid route geometry for place fetching");
+      return [];
+    }
+    
+    // Calculate total route length
+    let totalDistance = 0;
+    for (let i = 0; i < geometry.length - 1; i++) {
+      totalDistance += calculateDistance(
+        geometry[i][1], geometry[i][0],
+        geometry[i+1][1], geometry[i+1][0]
       );
     }
-  }
-  // Deduplicate by name.
-  const uniqueMap = new Map();
-  allPlaces.forEach(p => {
-    const key = p.name.toLowerCase();
-    if (!uniqueMap.has(key)) uniqueMap.set(key, p);
-  });
-  // Filter out places with rating below 4.0.
-  const filtered = Array.from(uniqueMap.values()).filter(
-    p => parseFloat(p.rating) >= 4.0
-  );
-  return filtered.slice(0, 20);
-}
-
-/* ----------------- LEAFLET POLYLINES COMPONENT ----------------- */
-const RoutesPolylines = React.memo(({ routesData, selectedRouteIndex }) => {
-  const map = useMap();
-  useEffect(() => {
-    if (routesData.length > 0) {
-      const allCoords = routesData.flatMap(r => r.geometry || []);
-      if (allCoords.length > 0) {
-        const latLngs = allCoords.map(([lon, lat]) => [lat, lon]);
-        const bounds = L.latLngBounds(latLngs);
-        map.fitBounds(bounds, { padding: [50, 50] });
+    
+    console.log(`Total route distance: ${(totalDistance/1000).toFixed(1)}km`);
+    
+    // Get strategic points along the route - start, middle segments, and end
+    // For longer routes, sample more points
+    const numSamplePoints = totalDistance > 100000 ? 5 : 
+                           totalDistance > 50000 ? 4 : 3;
+    
+    const sampledPoints = [];
+    
+    // Always include start point
+    sampledPoints.push(geometry[0]);
+    
+    // Add evenly distributed middle points
+    if (numSamplePoints > 2) {
+      const segmentLength = totalDistance / (numSamplePoints - 1);
+      let accumulatedDistance = 0;
+      let lastSampledDistance = 0;
+      
+      for (let i = 0; i < geometry.length - 1; i++) {
+        const current = geometry[i];
+        const next = geometry[i + 1];
+        const segmentDistance = calculateDistance(
+          current[1], current[0],
+          next[1], next[0]
+        );
+        
+        accumulatedDistance += segmentDistance;
+        
+        // Check if we've traveled far enough to sample another point
+        if (accumulatedDistance - lastSampledDistance >= segmentLength) {
+          sampledPoints.push(next);
+          lastSampledDistance = accumulatedDistance;
+        }
       }
     }
-  }, [routesData, map]);
-  return routesData.map((route, idx) => {
-    if (!route?.geometry) return null;
-    const isSelected = idx === selectedRouteIndex;
+    
+    // Always include end point if not already included
+    const lastPoint = geometry[geometry.length - 1];
+    if (sampledPoints.length < numSamplePoints) {
+      sampledPoints.push(lastPoint);
+    }
+    
+    console.log(`Sampling ${sampledPoints.length} points evenly distributed along the route`);
+    
+    // Add delay between requests to avoid rate limiting
+    const placesPromises = sampledPoints.map(async ([lon, lat], index) => {
+      // Add a small delay between requests
+      if (index > 0) {
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+      
+      try {
+        console.log(`Fetching places at point ${index + 1}/${sampledPoints.length}: [${lat}, ${lon}]`);
+        const response = await fetch(`http://localhost:5000/api/landmarks/places?lat=${lat}&lng=${lon}&keywords=${keywords.join(',')}`);
+        const data = await response.json();
+        console.log(`Places found at point ${index + 1}/${sampledPoints.length}: ${data.results?.length || 0}`);
+        return data.results || [];
+      } catch (err) {
+        console.error(`Error fetching places at point ${index + 1}/${sampledPoints.length}:`, err);
+        return [];
+      }
+    });
+    
+    const allPlacesArrays = await Promise.all(placesPromises);
+    
+    // Combine all places and remove duplicates using place_id
+    const uniquePlaces = new Map();
+    allPlacesArrays.flat().forEach(place => {
+      if (!uniquePlaces.has(place.place_id)) {
+        uniquePlaces.set(place.place_id, {
+          id: place.place_id,
+          name: place.name,
+          lat: place.geometry.location.lat,
+          lon: place.geometry.location.lng,
+          rating: place.rating || "N/A",
+          types: place.types || [],
+          vicinity: place.vicinity || "",
+          photoRef: place.photos?.[0]?.photo_reference
+        });
+      }
+    });
+    
+    // Convert to array and limit to a reasonable number
+    let places = Array.from(uniquePlaces.values());
+    
+    // Sort places by distance from the route for better distribution
+    places = places.map(place => {
+      const distanceToRoute = minDistanceToRoute(place.lat, place.lon, geometry);
+      return { ...place, distanceToRoute };
+    });
+    
+    // Prioritize places with good ratings and close to route
+    places.sort((a, b) => {
+      // First sort by distance to route
+      const routeDistanceDiff = a.distanceToRoute - b.distanceToRoute;
+      
+      // If distances are similar, prioritize higher ratings
+      if (Math.abs(routeDistanceDiff) < 1000) { // Within 1km of each other
+        const ratingA = typeof a.rating === 'number' ? a.rating : 0;
+        const ratingB = typeof b.rating === 'number' ? b.rating : 0;
+        if (ratingA !== ratingB) return ratingB - ratingA;
+      }
+      
+      return routeDistanceDiff;
+    });
+    
+    // For very long routes, ensure we have a good distribution
+    if (totalDistance > 100000 && places.length > 10) {
+      places = distributePointsEvenly(places, geometry, 15);
+    }
+    
+    console.log(`Final list: ${places.length} unique places found along the route`);
+    return places;
+  } catch (error) {
+    console.error('Error fetching places along route:', error);
+    return [];
+  }
+}
+
+// Helper function to calculate minimum distance from a point to a route
+function minDistanceToRoute(lat, lon, routeGeometry) {
+  let minDistance = Infinity;
+  
+  for (let i = 0; i < routeGeometry.length - 1; i++) {
+    const segmentStart = routeGeometry[i];
+    const segmentEnd = routeGeometry[i + 1];
+    
+    const distance = distanceToLineSegment(
+      lat, lon,
+      segmentStart[1], segmentStart[0],
+      segmentEnd[1], segmentEnd[0]
+    );
+    
+    minDistance = Math.min(minDistance, distance);
+  }
+  
+  return minDistance;
+}
+
+// Calculate distance from point to line segment
+function distanceToLineSegment(px, py, x1, y1, x2, y2) {
+  const A = px - x1;
+  const B = py - y1;
+  const C = x2 - x1;
+  const D = y2 - y1;
+
+  const dot = A * C + B * D;
+  const len_sq = C * C + D * D;
+  let param = -1;
+  
+  if (len_sq !== 0) param = dot / len_sq;
+
+  let xx, yy;
+
+  if (param < 0) {
+    xx = x1;
+    yy = y1;
+  } else if (param > 1) {
+    xx = x2;
+    yy = y2;
+  } else {
+    xx = x1 + param * C;
+    yy = y1 + param * D;
+  }
+
+  const dx = px - xx;
+  const dy = py - yy;
+  
+  // Convert to meters using haversine
+  return calculateDistance(px, py, xx, yy);
+}
+
+// Distribute points more evenly along the route
+function distributePointsEvenly(places, routeGeometry, maxPlaces) {
+  if (places.length <= maxPlaces) return places;
+  
+  // Calculate position along route for each place (as percentage)
+  const placesWithPosition = places.map(place => {
+    const { lat, lon } = place;
+    let minDist = Infinity;
+    let closestPointIndex = 0;
+    
+    // Find closest point on route
+    for (let i = 0; i < routeGeometry.length; i++) {
+      const dist = calculateDistance(
+        lat, lon,
+        routeGeometry[i][1], routeGeometry[i][0]
+      );
+      if (dist < minDist) {
+        minDist = dist;
+        closestPointIndex = i;
+      }
+    }
+    
+    // Calculate position as percentage along route
+    const position = closestPointIndex / (routeGeometry.length - 1);
+    return { ...place, position };
+  });
+  
+  // Sort by position
+  placesWithPosition.sort((a, b) => a.position - b.position);
+  
+  // Create bins and distribute places
+  const result = [];
+  const numBins = maxPlaces;
+  
+  for (let i = 0; i < numBins; i++) {
+    // Find places in this bin's range
+    const binStart = i / numBins;
+    const binEnd = (i + 1) / numBins;
+    
+    const placesInBin = placesWithPosition.filter(
+      p => p.position >= binStart && p.position < binEnd
+    );
+    
+    // Take best rated place from each bin
+    if (placesInBin.length > 0) {
+      placesInBin.sort((a, b) => {
+        const ratingA = typeof a.rating === 'number' ? a.rating : 0;
+        const ratingB = typeof b.rating === 'number' ? b.rating : 0;
+        return ratingB - ratingA;
+      });
+      
+      result.push(placesInBin[0]);
+    }
+  }
+  
+  return result;
+}
+
+// Helper function to calculate distance between two points
+function calculateDistance(point1, point2) {
+  const R = 6371e3; // Earth's radius in meters
+  const φ1 = point1[1] * Math.PI / 180; // lat1 in radians
+  const φ2 = point2[1] * Math.PI / 180; // lat2 in radians
+  const Δφ = (point2[1] - point1[1]) * Math.PI / 180;
+  const Δλ = (point2[0] - point1[0]) * Math.PI / 180;
+
+  const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+          Math.cos(φ1) * Math.cos(φ2) *
+          Math.sin(Δλ/2) * Math.sin(Δλ/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+  return R * c; // Distance in meters
+}
+
+// --------------------- BASE ROUTES VIA BACKEND (Google Maps API) ---------------------
+// Fetch multiple routes (time/distance info from Google Maps API) from your backend.
+async function fetchBaseRoutes(origin, destination) {
+  try {
+    // Format coordinates properly, ensuring no extra spaces
+    const originStr = `${origin.lat.toFixed(7)},${origin.lon.toFixed(7)}`;
+    const destStr = `${destination.lat.toFixed(7)},${destination.lon.toFixed(7)}`;
+    
+    const url = new URL("http://localhost:5000/api/landmarks/routes");
+    url.searchParams.set("origin", originStr);
+    url.searchParams.set("destination", destStr);
+    
+    console.log("Fetching routes with coordinates:", {
+      origin: originStr,
+      destination: destStr
+    });
+
+    const resp = await fetch(url.toString());
+    const data = await resp.json();
+
+    if (!resp.ok) {
+      console.error("Route fetch error:", data);
+      throw new Error(data.error || `Failed to fetch routes: ${resp.status}`);
+    }
+
+    if (!data.routes || !Array.isArray(data.routes)) {
+      console.error("Invalid routes response:", data);
+      throw new Error("No routes found in response");
+    }
+
+    return data.routes.map(route => ({
+      ...route,
+      timeTaken: route.timeTaken || route.duration?.text,
+      timeValue: route.timeValue || route.duration?.value,
+      distance: route.distance,
+      distanceValue: route.distanceValue || route.distance?.value,
+      geometry: route.geometry,
+      places: route.places || []
+    }));
+  } catch (error) {
+    console.error("Error fetching base routes:", error);
+    throw error;
+  }
+}
+
+// --------------------- VIA ROUTE WITH PLACES VIA BACKEND ---------------------
+// Fetch a single route (with via points) from the backend (using Google Maps API) 
+// that returns time/distance info and OSRM geometry.
+async function fetchRouteWithPlaces(origin, destination, selectedPlaces) {
+  try {
+    const url = new URL("http://localhost:5000/api/landmarks/routesWithPlaces");
+    url.searchParams.set("origin", `${origin.lat},${origin.lon}`);
+    url.searchParams.set("destination", `${destination.lat},${destination.lon}`);
+    
+    if (selectedPlaces.length > 0) {
+      const waypoints = selectedPlaces
+        .map(p => `${p.location?.lat || p.lat},${p.location?.lng || p.lon}`)
+        .join("|");
+      url.searchParams.set("waypoints", waypoints);
+    }
+
+    console.log("Fetching via route from backend:", url.toString());
+    const resp = await fetch(url.toString());
+    if (!resp.ok) {
+      const errorData = await resp.json();
+      throw new Error(errorData.error || `Backend via route error: ${resp.status}`);
+    }
+    const data = await resp.json();
+    return {
+      ...data.route,
+      timeTaken: data.route.timeTaken || data.route.duration?.text,
+      distance: data.route.distance,
+      geometry: data.route.geometry
+    };
+  } catch (error) {
+    console.error("Error fetching route with places:", error);
+    throw error;
+  }
+}
+
+// --------------------- OSRM Map Utilities (for displaying route geometry) ---------------------
+function RoutePolylines({ routes, selectedIndex }) {
+  const map = useMap();
+  
+  // Effect to fit the map to the route bounds when routes change
+  useEffect(() => {
+    if (!routes || routes.length === 0) return;
+    
+    try {
+      // Get all coordinates from all routes to calculate bounds
+      const allCoords = routes.flatMap(r => r?.geometry || []);
+      if (allCoords.length === 0) {
+        console.warn("No coordinates found in routes");
+        return;
+      }
+      
+      console.log(`Fitting map to ${allCoords.length} coordinates`);
+      
+      // Convert coordinates to Leaflet format and create bounds
+      const latLngs = allCoords.map(([lon, lat]) => [lat, lon]);
+      const bounds = L.latLngBounds(latLngs);
+      
+      // Fit the map to the bounds with padding
+      map.fitBounds(bounds, { padding: [50, 50] });
+    } catch (error) {
+      console.error("Error fitting map to bounds:", error);
+    }
+  }, [routes, map]);
+  
+  // If no routes, don't render anything
+  if (!routes || routes.length === 0) return null;
+  
+  return routes.map((route, idx) => {
+    if (!route?.geometry || !Array.isArray(route.geometry) || route.geometry.length < 2) {
+      console.warn(`Route ${idx} has invalid geometry`);
+      return null;
+    }
+    
+    const isSelected = idx === selectedIndex;
     const latlngs = route.geometry.map(([lon, lat]) => [lat, lon]);
+    
     return (
       <Polyline
         key={idx}
@@ -163,28 +422,36 @@ const RoutesPolylines = React.memo(({ routesData, selectedRouteIndex }) => {
       />
     );
   });
-});
+}
 
-/* ----------------- Custom Icon for Hovered Place Marker ----------------- */
+// --------------------- Custom Icon for Hovered Place Marker ---------------------
 const hoveredIcon = L.icon({
-  iconUrl: "/src/assets/marker.png", // Ensure this file exists.
+  iconUrl: "/src/assets/marker.png",
   iconSize: [60, 60],
   iconAnchor: [30, 60],
 });
 
-/* ----------------- MAIN COMPONENT ----------------- */
-const SuggestPage = () => {
+// --------------------- MAIN COMPONENT ---------------------
+export default function SuggestPage() {
   const navigate = useNavigate();
   const [originCoords, setOriginCoords] = useState(null);
   const [destCoords, setDestCoords] = useState(null);
-  const [routesData, setRoutesData] = useState([]);
-  const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
-  const [isLoadingRoutes, setIsLoadingRoutes] = useState(false);
-  const [isLoadingPlaces, setIsLoadingPlaces] = useState(false);
+  // Base routes from backend (multi-route view)
+  const [baseRoutes, setBaseRoutes] = useState([]);
+  // When a base route is selected, we fetch places and then recalc viaRoute (single route)
+  const [selectedBaseIndex, setSelectedBaseIndex] = useState(null);
+  // POIs available from the selected base route (rendered as checkboxes)
+  const [places, setPlaces] = useState([]);
+  // The via route built from selected (checked) places
+  const [viaRoute, setViaRoute] = useState(null);
+  // UI states
   const [hoveredPlace, setHoveredPlace] = useState(null);
+  const [showNavOptions, setShowNavOptions] = useState(false);
+  const [loadingPlaces, setLoadingPlaces] = useState(false);
 
-  const origin = sessionStorage.getItem("location") || "Kochi, Kerala";
-  const destination = sessionStorage.getItem("destination") || "Thiruvananthapuram, Kerala";
+  // Read origin, destination, keywords from sessionStorage
+  const originStr = sessionStorage.getItem("location") || "Kochi, Kerala";
+  const destinationStr = sessionStorage.getItem("destination") || "Thiruvananthapuram, Kerala";
   const selectedKeywords = useMemo(() => {
     const raw = sessionStorage.getItem("selectedKeywords");
     if (!raw) return [];
@@ -195,165 +462,325 @@ const SuggestPage = () => {
     }
   }, []);
 
-  // Fetch OSRM routes on mount.
+  // 1) On mount, fetch coordinates
   useEffect(() => {
-    async function fetchRoutes() {
-      setIsLoadingRoutes(true);
+    (async () => {
       try {
-        const oCoords = await getCoordinates(origin);
-        const dCoords = await getCoordinates(destination);
-        if (!oCoords || !dCoords) {
-          console.error("Could not geocode origin/destination");
-          return;
-        }
-        setOriginCoords(oCoords);
-        setDestCoords(dCoords);
-        const routes = await getRoutes(oCoords, dCoords);
-        const routesWithPlaces = routes.map(r => ({ ...r, places: null }));
-        setRoutesData(routesWithPlaces);
+        const oC = await getCoordinates(originStr);
+        const dC = await getCoordinates(destinationStr);
+        setOriginCoords(oC);
+        setDestCoords(dC);
       } catch (err) {
-        console.error("Error fetching OSRM routes:", err);
-      } finally {
-        setIsLoadingRoutes(false);
+        console.error("Error fetching coords:", err);
       }
-    }
-    fetchRoutes();
-  }, [origin, destination]);
+    })();
+  }, [originStr, destinationStr]);
 
-  // Fetch places for the selected route if not already fetched.
+  // 2) Once coordinates are available, fetch base routes (using Google Maps API from backend)
   useEffect(() => {
-    async function fetchPlacesForRoute() {
-      if (selectedRouteIndex == null || selectedRouteIndex >= routesData.length) return;
-      const route = routesData[selectedRouteIndex];
-      if (!route || !route.geometry) return;
-      if (route.places !== null) return; // Already fetched.
-      setIsLoadingPlaces(true);
+    if (!originCoords || !destCoords) return;
+    (async () => {
       try {
-        const newPlaces = await getPlacesAlongRoute(route.geometry, selectedKeywords);
-        setRoutesData(prev =>
-          prev.map((r, idx) =>
-            idx === selectedRouteIndex ? { ...r, places: newPlaces } : r
-          )
-        );
+        const routes = await fetchBaseRoutes(originCoords, destCoords);
+        setBaseRoutes(routes);
+      } catch (err) {
+        console.error("Error fetching base routes:", err);
+      }
+    })();
+  }, [originCoords, destCoords]);
+
+  // 3) When a base route is selected, fetch places for that route's geometry.
+  const [fetchedForIndex, setFetchedForIndex] = useState(null);
+  useEffect(() => {
+    if (selectedBaseIndex === null || selectedBaseIndex >= baseRoutes.length) return;
+    if (fetchedForIndex === selectedBaseIndex) return; // already fetched for this route
+    const chosen = baseRoutes[selectedBaseIndex];
+    if (!chosen || !chosen.geometry) return;
+    (async () => {
+      setLoadingPlaces(true);
+      try {
+        const foundPlaces = await getPlacesAlongRoute(chosen.geometry, selectedKeywords);
+        // Default each fetched place to checked=true.
+        const placesWithCheck = foundPlaces.map(p => ({ ...p, checked: true }));
+        setPlaces(placesWithCheck);
+        setFetchedForIndex(selectedBaseIndex);
       } catch (err) {
         console.error("Error fetching places:", err);
       } finally {
-        setIsLoadingPlaces(false);
+        setLoadingPlaces(false);
+      }
+    })();
+  }, [selectedBaseIndex, baseRoutes, selectedKeywords, fetchedForIndex]);
+
+  // 4) When the user toggles place checkboxes, recalc the final route (via route).
+  useEffect(() => {
+    async function updateRoute() {
+      if (!originCoords || !destCoords) return;
+      if (selectedBaseIndex === null || selectedBaseIndex >= baseRoutes.length) return;
+      const chosen = baseRoutes[selectedBaseIndex];
+      if (!chosen) return;
+      const selectedPlaces = places.filter(p => p.checked);
+      if (selectedPlaces.length === 0) {
+        setViaRoute({
+          timeTaken: chosen.timeTaken,
+          distance: chosen.distance,
+          geometry: chosen.geometry
+        });
+      } else {
+        try {
+          const single = await fetchRouteWithPlaces(originCoords, destCoords, selectedPlaces);
+          setViaRoute(single);
+        } catch (err) {
+          console.error("Error fetching route with places:", err);
+          setViaRoute(null);
+        }
       }
     }
-    fetchPlacesForRoute();
-  }, [routesData, selectedRouteIndex, selectedKeywords]);
+    updateRoute();
+  }, [originCoords, destCoords, baseRoutes, selectedBaseIndex, places]);
 
-  function handleSelectRoute(idx) {
-    setSelectedRouteIndex(idx);
+  // Handler for selecting a base route (phase 1 -> phase 2)
+  function handleBaseRouteSelect(idx) {
+    setSelectedBaseIndex(idx);
+    setPlaces([]);
+    setViaRoute(null);
+    setFetchedForIndex(null);
+  }
+
+  // Toggle a place's checkbox.
+  function handlePlaceToggle(index) {
+    setPlaces(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], checked: !updated[index].checked };
+      return updated;
+    });
+  }
+
+  // Reload button: revert to multi‑route view.
+  function handleReload() {
+    setSelectedBaseIndex(null);
+    setPlaces([]);
+    setViaRoute(null);
+    setFetchedForIndex(null);
+  }
+
+  // Navigation options: Build external map URLs including waypoints from checked places.
+  function buildGoogleMapsUrl() {
+    try {
+      // Default URL without waypoints
+      let url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(
+        originStr
+      )}&destination=${encodeURIComponent(destinationStr)}&travelmode=driving`;
+      
+      // Get checked places
+      const selected = places.filter(p => p.checked);
+      
+      if (selected.length > 0) {
+        // Google Maps has a limit on the number of waypoints in the URL (generally 10)
+        // We'll take the first 10 checkboxed places
+        const limitedWaypoints = selected.slice(0, 10);
+        console.log("Selected waypoints for navigation:", limitedWaypoints.map(p => p.name));
+        
+        // Google Maps expects waypoints formatted as: &waypoints=lat,lng|lat,lng|lat,lng
+        const formattedWaypoints = limitedWaypoints
+          .map(p => {
+            // Ensure lat/lon are valid numbers and properly formatted
+            const lat = typeof p.lat === 'number' ? p.lat : parseFloat(p.lat);
+            const lon = typeof p.lon === 'number' ? p.lon : parseFloat(p.lon);
+            
+            if (isNaN(lat) || isNaN(lon)) {
+              console.warn(`Invalid coordinates for place: ${p.name}`, p);
+              return null;
+            }
+            
+            return `${lat.toFixed(6)},${lon.toFixed(6)}`;
+          })
+          .filter(Boolean) // Remove any null values
+          .join('|');
+        
+        // Only add waypoints if we have valid ones
+        if (formattedWaypoints) {
+          url += `&waypoints=${encodeURIComponent(formattedWaypoints)}`;
+          console.log("Added waypoints to URL:", formattedWaypoints);
+        }
+      }
+      
+      console.log("Final Google Maps URL:", url);
+      return url;
+    } catch (error) {
+      console.error("Error building Google Maps URL:", error);
+      // Fallback to basic URL without waypoints
+      return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(
+        originStr
+      )}&destination=${encodeURIComponent(destinationStr)}&travelmode=driving`;
+    }
+  }
+  function buildAppleMapsUrl() {
+    return `https://maps.apple.com/?saddr=${encodeURIComponent(
+      originStr
+    )}&daddr=${encodeURIComponent(destinationStr)}&dirflg=d`;
+  }
+  function buildWazeUrl() {
+    if (destCoords)
+      return `https://waze.com/ul?ll=${destCoords.lat},${destCoords.lon}&navigate=yes`;
+    return "https://waze.com";
+  }
+  const handleNavigateClick = () => {
+    // When opening nav options, pre-generate URLs for debugging
+    if (!showNavOptions) {
+      console.log("Navigation options opened");
+      console.log("Selected places:", places.filter(p => p.checked).map(p => p.name));
+    }
+    setShowNavOptions(!showNavOptions);
+  };
+  function handleOptionClick(url) {
+    console.log("Opening external navigation with URL:", url);
+    window.open(url, "_blank");
   }
 
   return (
     <div className="suggest-container">
       <div className="top-bar">
-        <button id="name" onClick={() => navigate("/home")}>
-          RouteWeaver
-        </button>
+        <button id="name" onClick={() => navigate("/home")}>RouteWeaver</button>
+        {selectedBaseIndex !== null && (
+          <button className="reload-button" onClick={handleReload}>Reload Routes</button>
+        )}
       </div>
       <div className="main-content">
         <div className="sidebar">
-          <div className="routes">
-            <div className="route-header">
-              {isLoadingRoutes ? "Loading routes..." : `${origin} to ${destination}`}
-            </div>
-            <div className="route-list">
-              {routesData.map((route, idx) => {
-                const isSelected = idx === selectedRouteIndex;
-                return (
-                  <button
-                    key={idx}
-                    className={`route-item ${isSelected ? "selected" : ""}`}
-                    onClick={() => handleSelectRoute(idx)}
-                  >
-                    <span className="route-number">{["1️⃣", "2️⃣", "3️⃣", "4️⃣"][idx]}</span>
-                    <span className="route-time">{route.timeTaken}</span>
-                    <span className="route-distance">{route.distance}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          <hr />
-          <div className="places">
-            <div className="place-header">
-              {isLoadingPlaces ? "Loading places..." : "Places to Visit"}
-            </div>
-            <div className="place-list">
-              {isLoadingPlaces ? (
-                <div className="loading-placeholder">
-                  <span>Fetching places...</span>
-                </div>
-              ) : selectedRouteIndex == null || !routesData[selectedRouteIndex] ? (
-                <div className="loading-placeholder">
-                  <span>Select a route to see places</span>
-                </div>
-              ) : routesData[selectedRouteIndex].places === null ? (
-                <div className="loading-placeholder">
-                  <span>Fetching places...</span>
-                </div>
-              ) : routesData[selectedRouteIndex].places.length === 0 ? (
-                <div className="loading-placeholder">
-                  <span>No places found for this route</span>
-                </div>
-              ) : (
-                routesData[selectedRouteIndex].places.map((p, i) => (
-                  <button
-                    key={i}
-                    className="place-item"
-                    onMouseEnter={() => setHoveredPlace(p)}
-                    onMouseLeave={() => setHoveredPlace(null)}
-                  >
-                    <div className="place-info">
-                      <span className="place-name">{p.name}</span>
-                      <div className="place-details">
-                        <span className="place-rating">⭐ {p.rating}</span>
-                        <span className="place-visitors">👥 {p.visitors}/day</span>
-                      </div>
+          {selectedBaseIndex === null ? (
+            <>
+              {/* Phase 1: Multi-route view */}
+              <div className="routes">
+                <div className="route-header">{originStr} to {destinationStr}</div>
+                <div className="route-list">
+                  {baseRoutes.length === 0 ? (
+                    <div className="loading-placeholder">
+                      <span>No routes found or still fetching</span>
                     </div>
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
+                  ) : (
+                    baseRoutes.map((r, i) => (
+                      <button
+                        key={i}
+                        className="route-item"
+                        onClick={() => handleBaseRouteSelect(i)}
+                      >
+                        <span className="route-number">{["1️⃣","2️⃣","3️⃣","4️⃣"][i]}</span>
+                        <span className="route-time">{r.timeTaken}</span>
+                        <span className="route-distance">{r.distance}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+              <hr />
+              <div className="places">
+                <div className="place-header">Places to Visit</div>
+                <div className="place-list">
+                  <div className="loading-placeholder">
+                    <span>Select a route to see places</span>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Phase 2: Single route with via waypoints */}
+              <div className="routes">
+                <div className="route-header">
+                  <p>
+                    <strong>Chosen route:</strong>{" "}
+                    {baseRoutes[selectedBaseIndex]?.timeTaken} |{" "}
+                    {baseRoutes[selectedBaseIndex]?.distance}
+                  </p>
+                </div>
+              </div>
+              <hr />
+              <div className="places">
+                <div className="place-header">
+                  {loadingPlaces ? "Fetching places..." : "Places to Visit"}
+                </div>
+                <div className="place-list">
+                  {loadingPlaces ? (
+                    <div className="loading-placeholder">
+                      <span>Loading places...</span>
+                    </div>
+                  ) : places.length === 0 ? (
+                    <div className="loading-placeholder">
+                      <span>No places found</span>
+                    </div>
+                  ) : (
+                    places.map((p, i) => (
+                      <label
+                        key={i}
+                        className="place-item"
+                        onMouseEnter={() => setHoveredPlace(p)}
+                        onMouseLeave={() => setHoveredPlace(null)}
+                        style={{ display: "flex", alignItems: "center" }}
+                      >
+                        <div className="place-info" style={{ cursor: "pointer" }}>
+                          <span className="place-name">{p.name}</span>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={p.checked}
+                          onChange={() => handlePlaceToggle(i)}
+                          style={{ marginRight: "8px" }}
+                        />
+                      </label>
+                    ))
+                  )}
+                </div>
+              </div>
+            </>
+          )}
           <hr />
           <div className="bottom-buttons">
-            <button id="navigate-btn">Navigate</button>
+            <button id="navigate-btn" onClick={handleNavigateClick}>Navigate</button>
             <button id="submit-btn">Submit</button>
           </div>
         </div>
         <div className="map-area">
-          {originCoords && (
-            <MapContainer
-              center={[originCoords.lat, originCoords.lon]}
-              zoom={7}
-              style={{ height: "100%", width: "100%" }}
-            >
-              <TileLayer
-                attribution='&copy; OpenStreetMap contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              <RoutesPolylines
-                routesData={routesData}
-                selectedRouteIndex={selectedRouteIndex}
-              />
-              {originCoords && (
-                <Marker position={[originCoords.lat, originCoords.lon]} />
-              )}
-              {destCoords && (
-                <Marker position={[destCoords.lat, destCoords.lon]} />
-              )}
-              {hoveredPlace && (
-                <Marker
-                  position={[hoveredPlace.lat, hoveredPlace.lon]}
-                  icon={hoveredIcon}
+          {originCoords && destCoords && (
+            selectedBaseIndex === null ? (
+              // Phase 1: Multi-route view (baseRoutes)
+              <MapContainer
+                center={[originCoords.lat, originCoords.lon]}
+                zoom={7}
+                style={{ height: "100%", width: "100%" }}
+              >
+                <TileLayer
+                  attribution='&copy; OpenStreetMap contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-              )}
-            </MapContainer>
+                <RoutePolylines routes={baseRoutes} selectedIndex={0} />
+                {originCoords && <Marker position={[originCoords.lat, originCoords.lon]} />}
+                {destCoords && <Marker position={[destCoords.lat, destCoords.lon]} />}
+                {hoveredPlace && (
+                  <Marker position={[hoveredPlace.lat, hoveredPlace.lon]} icon={hoveredIcon} />
+                )}
+              </MapContainer>
+            ) : (
+              // Phase 2: Single route (viaRoute)
+              viaRoute && (
+                <MapContainer
+                  center={[originCoords.lat, originCoords.lon]}
+                  zoom={7}
+                  style={{ height: "100%", width: "100%" }}
+                >
+                  <TileLayer
+                    attribution='&copy; OpenStreetMap contributors'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                  <RoutePolylines routes={[viaRoute]} selectedIndex={0} />
+                  <Marker position={[originCoords.lat, originCoords.lon]} />
+                  {destCoords && <Marker position={[destCoords.lat, destCoords.lon]} />}
+                  {hoveredPlace && (
+                    <Marker position={[hoveredPlace.lat, hoveredPlace.lon]} icon={hoveredIcon} />
+                  )}
+                </MapContainer>
+              )
+            )
           )}
           {hoveredPlace && (
             <div className="hoverbox">
@@ -362,9 +789,7 @@ const SuggestPage = () => {
                   <img
                     src={`https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=${hoveredPlace.photoRef}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`}
                     alt={hoveredPlace.name}
-                    onError={(e) => {
-                      e.currentTarget.src = fallbackImg;
-                    }}
+                    onError={e => { e.currentTarget.src = fallbackImg; }}
                   />
                 ) : (
                   <img src={fallbackImg} alt="Fallback" />
@@ -378,10 +803,46 @@ const SuggestPage = () => {
               </div>
             </div>
           )}
+          {showNavOptions && (
+            <NavBox
+              origin={originStr}
+              destination={destinationStr}
+              destCoords={destCoords}
+              places={places}
+              buildGoogleMapsUrl={buildGoogleMapsUrl}
+              buildAppleMapsUrl={buildAppleMapsUrl}
+              buildWazeUrl={buildWazeUrl}
+              handleOptionClick={handleOptionClick}
+            />
+          )}
         </div>
       </div>
     </div>
   );
-};
+}
 
-export default SuggestPage;
+// Navigation Box Component
+function NavBox({ buildGoogleMapsUrl, buildAppleMapsUrl, buildWazeUrl, handleOptionClick }) {
+  // Pre-generate URLs for better performance and debugging
+  const googleMapsUrl = buildGoogleMapsUrl();
+  const appleMapsUrl = buildAppleMapsUrl();
+  const wazeUrl = buildWazeUrl();
+  
+  return (
+    <div className="navbox">
+      <p className="navbox-title">Open in:</p>
+      <div className="navbox-options">
+        <button className="navbox-option" onClick={() => handleOptionClick(googleMapsUrl)}>
+          Google Maps
+        </button>
+        <button className="navbox-option" onClick={() => handleOptionClick(appleMapsUrl)}>
+          Apple Maps
+        </button>
+        <button className="navbox-option" onClick={() => handleOptionClick(wazeUrl)}>
+          Waze
+        </button>
+      </div>
+    </div>
+  );
+}
+
