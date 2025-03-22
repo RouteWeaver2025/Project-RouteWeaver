@@ -1,4 +1,7 @@
-/* Global Styles */
+/* Import suggest.css */
+@import url('./suggest.css');
+
+/* Reset conflicting styles */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -13,187 +16,358 @@ body, html {
     overflow: hidden;
 }
 
-/* Full-Screen Summary Container */
+/* Main container */
 .summary-container {
-    font-family: 'Roboto', sans-serif;
-    background-image: url(../assets/mohammad-alizade-4wzRuAb-KWs-unsplash.jpg);
-    background-size: cover;
-    background-position: center;
-    margin: 0;
-    padding: 20px;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    height: 100vh;
     width: 100vw;
-    max-width: 100%;
+    height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background-color: #f8f9fa;
+}
+
+/* Top bar styling */
+.top-bar {
     position: fixed;
     top: 0;
     left: 0;
-}
-
-/* Addresses Positioned Outside Container */
-.start-address {
-    font-size: 1.5rem;
-    color: rgb(255, 255, 255);
-    text-align: center;
-    margin-bottom: 10px;
-}
-.destination-address{
-    font-size: 1.5rem;
-    color: rgb(255, 249, 249);
-    text-align: center;
-    margin-bottom: -20px;
-}
-
-/* Name Button */
-#name {
-    width: fit-content;
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    z-index: 1000;
-    background-color: transparent;
-    border: none;
-    cursor: pointer;
-    color: white;
-    font-size: 1.2rem;
-    padding: 8px 16px;
-    border-radius: 8px;
-}
-
-#name:hover {
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(5px);
-}
-
-/* Scrollable Waypoints List */
-.waypoints-list {
-    flex-grow: 1;
-    overflow-y: auto;
-    padding-right: 10px;
-    margin: 20px 0;
-}
-
-/* Custom Scrollbar */
-.waypoints-list::-webkit-scrollbar {
-    width: 6px;
-}
-
-.waypoints-list::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.5);
-    border-radius: 10px;
-}
-
-.waypoints-list::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-/* Waypoint Tile */
-.waypoint-tile {
+    width: 100%;
+    height: 60px;
+    background-color: black;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: rgba(255, 255, 255, 0.2);
-    padding: 8px 15px;  /* Smaller padding */
-    border-radius: 8px;
-    margin: 5px auto;  /* Centered */
-    max-width: 60%;  /* Adjust width */
-    transition: transform 0.3s, background 0.3s;
+    padding: 0 20px;
+    z-index: 1000;
 }
 
-.waypoint-tile:hover {
-    background: rgba(255, 255, 255, 0.3);
-    transform: scale(1.02);
-}
-
-
-/* Waypoint Text */
-.waypoint-text {
+.summary-container #name {
     color: white;
-    font-size: 1.8rem;
-    flex-grow: 1;
-    text-align: left;
-}
-
-/* Delete Button */
-.delete-btn {
-    background: transparent;
-    border: none;
-    color: red;
-    font-size: 1rem;
-    max-width: 100px;
-    padding: 5px 8px;
-    cursor: pointer;
-    transition: transform 0.2s;
-}
-
-.delete-btn:hover {
-    transform: scale(1.1);
-}
-
-/* Button Styles */
-/* Button Styles (Smaller Width) */
-/* Button Styles (Much Smaller Width) */
-.edit-btn, .navigate-btn, .save-btn {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    font-size: 0.8rem;  /* Reduced font size */
-    border: none;
-    padding: 10px;  /* Smaller padding */
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.3s;
-    min-width: 80px;  /* Much smaller width */
-    max-width: fit-content;
-    text-align: center;
-}
-/* Bigger Navigate & Save Buttons */
-.navigate-btn, .save-btn {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    font-size: 1rem;  /* Increased font size */
-    border: none;
-    padding: 12px 24px;  /* Bigger padding */
-    border-radius: 10px;
-    cursor: pointer;
-    transition: background 0.3s;
-    min-width: 140px;  /* Increased width */
-    text-align: center;
-}
-
-.navigate-btn:hover, .save-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
-}
-
-/* Positioning Navigate and Save Buttons */
-.bottom-buttons {
-    display: flex;
-    justify-content: center;  /* Centered more */
-    align-items: center;
-    gap: 20px;  /* Increased spacing */
-    margin-top: 30px;  /* Slightly lower */
-}
-
-
-.edit-btn:hover, .navigate-btn:hover, .save-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
-}
-
-
-
-/* Positioning the Edit Button */
-.edit-btn {
+    font-size: 24px;
+    font-weight: 600;
     position: absolute;
-    top: 10px;
-    right: 80px;
+    top: -15px;
+    left: 20px;
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+    padding: 8px 0;
 }
 
-Positioning the Navigate and Save Buttons
-.bottom-buttons {
+/* Content layout */
+.content-container {
     display: flex;
-    justify-content: center;
+    margin-top: 60px;
+    height: calc(100vh - 60px);
+}
+
+/* Sidebar styling */
+.sidebar {
+    width: 380px;
+    background: white;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    position: relative;
+    overflow-y: auto;
+}
+
+.route-header {
+    padding: 20px 20px 0 20px;
+}
+
+.route-header h3 {
+    font-size: 18px;
+    color: #2c3e50;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.route-info {
+    padding: 20px 20px 0 20px;
+}
+
+/* Place list container */
+.place-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+    margin-bottom: 80px;
+}
+
+/* Place items */
+.place-item {
+    background: #f8f9fa;
+    padding: 16px;
+    margin: 8px 0;
+    border-radius: 12px;
+    display: flex;
     align-items: center;
-    gap: 10px;
-    margin-top: 20px;
+    justify-content: space-between;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.place-item:hover {
+    background: #e9ecef;
+    transform: translateX(4px);
+}
+
+.place-item .place-name {
+    font-size: 15px;
+    color: #2c3e50;
+    margin-right: 12px;
+}
+
+.place-item input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    border: 2px solid #3498db;
+    cursor: pointer;
+}
+
+/* Bottom buttons */
+.bottom-buttons {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 16px 20px;
+    background: white;
+    border-top: 1px solid #e9ecef;
+    display: flex;
+    gap: 12px;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.bottom-buttons button {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+#navigate-btn {
+    background: #3498db;
+    color: white;
+}
+
+#submit-btn {
+    background: #2ecc71;
+    color: white;
+}
+
+#navigate-btn:hover, #submit-btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+/* Reload button styling */
+.reload-button {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: none;
+    width: 40px;
+    border-radius: 38px;
+    padding: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-left: auto;
+}
+
+.reload-button:hover {
+    transform: rotate(180deg);
+}
+
+/* Map area styling */
+.map-area {
+    flex: 1;
+    position: relative;
+    display: block;
+    height: calc(100vh - 60px);
+    width: calc(100vw - 380px); /* Account for sidebar width */
+}
+
+/* Navigation options */
+.nav-options {
+    position: absolute;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 10px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    width: 80%;
+}
+
+.nav-options button {
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin: 5px 0;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.nav-options button:hover {
+    background-color: #357bd8;
+}
+
+/* Hover box styling */
+.hoverbox {
+    position: absolute;
+    bottom: 24px;
+    right: 24px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    width: 300px;
+    z-index: 1000;
+}
+
+.hoverbox-info {
+    padding: 16px;
+}
+
+.hoverbox-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0 0 8px 0;
+}
+
+/* Origin/Destination styling */
+.origin-dest-item {
+    background: #f0f2f5;
+    color: #2c3e50;
+    padding: 16px;
+    border-radius: 12px;
+    margin: 8px 0;
+}
+
+.start-point {
+    color: #2ecc71;
+    font-weight: bold;
+}
+
+.end-point {
+    color: #e74c3c;
+    font-weight: bold;
+}
+
+/* Error and loading messages */
+.error-message, .loading-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    margin: 20px 0;
+    text-align: center;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    min-height: 150px;
+}
+
+.error-message p {
+    color: #F44336;
+    font-weight: bold;
+}
+
+.loading-message p {
+    color: #2196F3;
+    font-weight: bold;
+}
+
+/* Places header */
+.places-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    color: #2c3e50;
+}
+
+.places-header h4 {
+    margin: 0;
+    font-size: 16px;
+}
+
+.places-header span {
+    font-size: 14px;
+    color: #666;
+}
+
+/* Media queries for responsive design */
+@media screen and (max-width: 800px) {
+    .top-bar {
+        padding: 0 16px;
+    }
+
+    .summary-container #name {
+        position: static;
+        padding: 8px 0;
+    }
+
+    .reload-button {
+        margin-left: auto;
+    }
+
+    .content-container {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        height: 50vh;
+        overflow-y: auto;
+    }
+
+    .place-list {
+        padding: 16px;
+        margin-bottom: 90px;
+    }
+
+    .bottom-buttons {
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        padding: 12px 16px;
+        background: white;
+        z-index: 1000;
+    }
+
+    .map-area {
+        width: 100%; /* Full width on mobile */
+        height: 50vh;
+    }
+
+    .hoverbox {
+        width: calc(100% - 32px);
+        bottom: 90px;
+        right: 16px;
+        left: 16px;
+    }
+
+    .nav-options {
+        width: calc(100% - 32px);
+        max-width: none;
+    }
 }

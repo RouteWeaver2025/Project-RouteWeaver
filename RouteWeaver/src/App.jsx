@@ -24,7 +24,7 @@ const AppWrapper = () => {
       setPageClass("suggest-container");}
      else if(location.pathname==="/saver"){
        setPageClass("saver-container");}
-    else if(location.pathname==="/summary"){
+    else if(location.pathname==="/summary" || location.pathname.startsWith("/summary/")){
       setPageClass("summary-container");
     }
     else if(location.pathname==="/packages"){
@@ -44,6 +44,7 @@ const AppWrapper = () => {
         <Route path="/queries" element={<Questions />} /> 
         <Route path="/saver" element={<SavedRoutes />} /> 
         <Route path="/summary" element={<Summary />} />
+        <Route path="/summary/:routeId" element={<Summary />} />
         <Route path="/packages" element={<TravelPackage />} /> 
       </Routes>
     </div>

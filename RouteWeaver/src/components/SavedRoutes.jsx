@@ -7,22 +7,63 @@ import { FaBold, FaUserCircle } from 'react-icons/fa';
 const SavedRoutes = () => {
   const [savedRoutes, setSavedRoutes] = useState([]);
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate(); // Hook for navigation
   const [isScrolled, setIsScrolled] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   useEffect(() => {
+    const email = localStorage.getItem('email');
+    if (!email) {
+      navigate('/', { replace: true });
+    }
+  }, [navigate]);
+
+  useEffect(() => {
     const fetchRoutes = async () => {
+      setLoading(true);
       try {
-        const user = sessionStorage.getItem('email');
-        const response = await axios.post("http://localhost:5000/saved", 
+        const user = localStorage.getItem('email');
+        console.log("Fetching routes for user:", user);
+        
+        if (!user) {
+          console.warn("No user email found in local storage");
+          setError("You need to be logged in to view saved routes");
+          setLoading(false);
+          return;
+        }
+        
+        const response = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/saved`, 
           { email: user },
+          { headers: { 'Content-Type': 'application/json' } }
         );
-        console.log(response.data);
-        setSavedRoutes(Object.values(response.data)); // Convert object to array
+        
+        console.log("Saved routes response:", response.data);
+        
+        if (Object.keys(response.data).length === 0) {
+          console.log("No saved routes found");
+          setError("No saved routes found");
+          setSavedRoutes([]);
+          setLoading(false);
+          return;
+        }
+        
+        // Convert the object of routes to an array for rendering
+        const routesArray = Object.entries(response.data).map(([id, route]) => ({
+          id,
+          origin: route.origin,
+          destination: route.destination
+        }));
+        
+        console.log("Processed routes array:", routesArray);
+        setSavedRoutes(routesArray);
+        setError(null); // Clear any previous errors
       } catch (err) {
-        setError(err.message);
-        console.error("Error fetching data:", err);
+        console.error("Error fetching saved routes:", err);
+        setError(err.response?.data?.message || err.message);
+        setSavedRoutes([]);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -38,8 +79,10 @@ const SavedRoutes = () => {
   }, []);
 
   // Function to handle tile click
-  const handleTileClick = (index) => {
-    navigate(`/summary/${index}`); // Navigate with index
+  const handleTileClick = (routeId) => {
+    // Navigate with the specific route ID
+    navigate(`/summary/${routeId}`);
+    console.log(`Navigating to route with ID: ${routeId}`);
   };
 
 
@@ -71,24 +114,37 @@ const SavedRoutes = () => {
       <div className="listhead">
         <p>Saved Routes</p>
       </div>
-      <div className="routes-list">
-        {savedRoutes.length > 0 ? (
-          savedRoutes.map((route, index) => (
-            <div
-              key={index}
-              className="route-tile"
-              onClick={() => handleTileClick(index)} // Handle click event
-              style={{ cursor: "pointer" }} // Indicate clickable item
-            >
-              <span className="start">{route.origin}</span>
-              <span className="route-arrow">→</span>
-              <span className="destination">{route.destination}</span>
+      {loading ? (
+        <div className="loading-indicator">
+          <p>Loading your saved routes...</p>
+        </div>
+      ) : (
+        <>
+          {error && (
+            <div className="error-message">
+              <p>{error}</p>
             </div>
-          ))
-        ) : (
-          <p className="no-routes">No saved routes available.</p>
-        )}
-      </div>
+          )}
+          <div className="routes-list">
+            {savedRoutes.length > 0 ? (
+              savedRoutes.map((route) => (
+                <div
+                  key={route.id}
+                  className="route-tile"
+                  onClick={() => handleTileClick(route.id)}
+                  style={{ cursor: "pointer" }}
+                >
+                  <span className="start">{route.origin}</span>
+                  <span className="route-arrow">→</span>
+                  <span className="destination">{route.destination}</span>
+                </div>
+              ))
+            ) : (
+              <p className="no-routes">No saved routes available.</p>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 };

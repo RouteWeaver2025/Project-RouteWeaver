@@ -101,7 +101,7 @@ router.get("/routes", async (req, res) => {
       headers: {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY,
-        'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs'
+        'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs,routes.travelAdvisory,routes.localizedValues'
       }
     });
 
@@ -111,18 +111,45 @@ router.get("/routes", async (req, res) => {
       return res.status(404).json({ error: "No routes found" });
     }
 
+    // Debug the route data
+    console.log("Route data example:", JSON.stringify(routesResponse.data.routes[0].duration));
+    
     // Process routes from Routes API
-    const processedRoutes = routesResponse.data.routes.map(route => {
+    const processedRoutes = routesResponse.data.routes.map((route, index) => {
+      console.log(`Route ${index} duration:`, route.duration);
+      console.log(`Route ${index} localized values:`, route.localizedValues);
+      
       const geometry = decodePolyline(route.polyline.encodedPolyline);
       
+      // Get travel time - try multiple sources
+      let timeTaken = "0 min";
+      
+      // 1. Try to get from localizedValues
+      if (route.localizedValues && route.localizedValues.duration) {
+        timeTaken = route.localizedValues.duration.text;
+        console.log(`Using localized duration: ${timeTaken}`);
+      } 
+      // 2. Try to format the duration string
+      else if (route.duration) {
+        timeTaken = formatDuration(route.duration);
+        console.log(`Using formatted duration: ${timeTaken}`);
+      }
+      // 3. Calculate time as fallback
+      else if (route.distanceMeters) {
+        // Assume average speed of 60 km/h if no duration
+        const estimatedMinutes = Math.round((route.distanceMeters / 1000) / 60 * 60);
+        timeTaken = `${estimatedMinutes} min`;
+        console.log(`Using estimated duration: ${timeTaken}`);
+      }
+      
       return {
-        timeTaken: formatDuration(route.duration),
+        timeTaken: timeTaken,
         timeValue: parseDuration(route.duration),
         distance: formatDistance(route.distanceMeters),
         distanceValue: route.distanceMeters,
         geometry: geometry,
         bounds: route.viewport || calculateBounds(geometry),
-        summary: route.description || 'Custom route'
+        summary: route.description || `Route ${index + 1}`
       };
     });
 
@@ -176,8 +203,10 @@ function calculateBounds(geometry) {
 
 // Helper function to format duration from Google Routes API format
 function formatDuration(duration) {
+  if (!duration) return "0 min";
+  
   const matches = duration.match(/(\d+)([HMS])/g);
-  if (!matches) return "Unknown";
+  if (!matches) return "0 min";
   
   const parts = [];
   matches.forEach(match => {
@@ -189,7 +218,7 @@ function formatDuration(duration) {
       case 'S': if (parseInt(value) > 0) parts.push(`${value} sec`); break;
     }
   });
-  return parts.join(' ');
+  return parts.length > 0 ? parts.join(' ') : "0 min";
 }
 
 // Helper function to parse duration to seconds

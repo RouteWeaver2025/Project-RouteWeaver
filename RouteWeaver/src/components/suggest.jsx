@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapContainer, TileLayer, Polyline, useMap, Marker } from "react-leaflet";
+import { MapContainer, TileLayer, Polyline, useMap, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "../design/suggest.css";
 import fallbackImg from "../assets/homeimg.jpg";
+import { FiRefreshCw } from 'react-icons/fi';
 
 // --------------------- GEOCODING ---------------------
 const coordinatesCache = new Map();
@@ -509,6 +510,7 @@ export default function SuggestPage() {
   const [hoveredPlace, setHoveredPlace] = useState(null);
   const [showNavOptions, setShowNavOptions] = useState(false);
   const [loadingPlaces, setLoadingPlaces] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Read origin, destination, keywords from sessionStorage
   const originStr = sessionStorage.getItem("location") || "Kochi, Kerala";
@@ -694,6 +696,74 @@ export default function SuggestPage() {
     }
     setShowNavOptions(!showNavOptions);
   };
+  
+  function handleSubmit() {
+    try {
+      const selectedPlaces = places.filter(p => p.checked);
+      console.log("Submitting selected places:", selectedPlaces.map(p => p.name));
+      
+      // Debug session storage contents
+      console.log("Session storage contents:", Object.entries(sessionStorage));
+      
+      // Get user email with correct check for 'email' in sessionStorage
+      const userEmail = localStorage.getItem("email") || 
+                       sessionStorage.getItem("email") || 
+                       localStorage.getItem("userEmail") || 
+                       sessionStorage.getItem("userEmail");
+      
+      if (!userEmail) {
+        alert("You need to be logged in to save routes. Please log in and try again.");
+        navigate("/login");
+        return;
+      }
+      
+      // Save route to backend
+      setIsSubmitting(true);
+      
+      fetch('http://localhost:5000/saved/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: userEmail,
+          id: "x", // For new route
+          origin: originStr,
+          destination: destinationStr,
+          selectedPlaces: selectedPlaces.map(place => ({
+            lat: place.lat,
+            lng: place.lng,
+            name: place.name
+          }))
+        })
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Server responded with ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log("Route saved successfully:", data);
+        setIsSubmitting(false);
+        
+        // Show success message
+        alert("Your route has been saved successfully!");
+        
+        // Navigate to saved routes page with correct path
+        navigate("/saver");
+      })
+      .catch(error => {
+        console.error("Error saving route:", error);
+        setIsSubmitting(false);
+        alert("There was an error saving your route. Please try again.");
+      });
+    } catch (error) {
+      console.error("Error in submit handler:", error);
+      alert("There was an error submitting your selection. Please try again.");
+    }
+  }
+
   function handleOptionClick(url) {
     console.log("Opening external navigation with URL:", url);
     window.open(url, "_blank");
@@ -704,101 +774,106 @@ export default function SuggestPage() {
       <div className="top-bar">
         <button id="name" onClick={() => navigate("/home")}>RouteWeaver</button>
         {selectedBaseIndex !== null && (
-          <button className="reload-button" onClick={handleReload}>Reload Routes</button>
+          <button className="reload-button" onClick={handleReload} aria-label="Reload routes">
+            <FiRefreshCw size={20} />
+          </button>
         )}
       </div>
       <div className="main-content">
         <div className="sidebar">
-          {selectedBaseIndex === null ? (
-            <>
-              {/* Phase 1: Multi-route view */}
-              <div className="routes">
-                <div className="route-header">{originStr} to {destinationStr}</div>
-                <div className="route-list">
-                  {baseRoutes.length === 0 ? (
-                    <div className="loading-placeholder">
-                      <span>No routes found or still fetching</span>
-                    </div>
-                  ) : (
-                    baseRoutes.map((r, i) => (
-                      <button
-                        key={i}
-                        className="route-item"
-                        onClick={() => handleBaseRouteSelect(i)}
-                      >
-                        <span className="route-number">{["1️⃣","2️⃣","3️⃣","4️⃣"][i]}</span>
-                        <span className="route-time">{r.timeTaken}</span>
-                        <span className="route-distance">{r.distance}</span>
-                      </button>
-                    ))
-                  )}
-                </div>
-              </div>
-              <hr />
-              <div className="places">
-                <div className="place-header">Places to Visit</div>
-                <div className="place-list">
-                  <div className="loading-placeholder">
-                    <span>Select a route to see places</span>
+          <div className="route-info">
+            <h2>Chosen route: {selectedBaseIndex !== null && baseRoutes[selectedBaseIndex] ? 
+              `${baseRoutes[selectedBaseIndex]?.timeTaken || "0 min"} | ${baseRoutes[selectedBaseIndex]?.distance || "0 km"}` 
+              : baseRoutes[0] ? `${baseRoutes[0]?.timeTaken || "0 min"} | ${baseRoutes[0]?.distance || "0 km"}` : "0 min | 0 km"}</h2>
+          </div>
+          <h3>Places to Visit</h3>
+          <div className="place-list">
+            {selectedBaseIndex === null ? (
+              <>
+                {/* Phase 1: Multi-route view */}
+                <div className="routes">
+                  <div className="route-header">{originStr} to {destinationStr}</div>
+                  <div className="route-list">
+                    {baseRoutes.length === 0 ? (
+                      <div className="loading-placeholder">
+                        <span>No routes found or still fetching</span>
+                      </div>
+                    ) : (
+                      baseRoutes.map((r, i) => (
+                        <button
+                          key={i}
+                          className="route-item"
+                          onClick={() => handleBaseRouteSelect(i)}
+                        >
+                          <span className="route-number">{["1️⃣","2️⃣","3️⃣","4️⃣"][i]}</span>
+                          <span className="route-time">{r.timeTaken}</span>
+                          <span className="route-distance">{r.distance}</span>
+                        </button>
+                      ))
+                    )}
                   </div>
                 </div>
-              </div>
-            </>
-          ) : (
-            <>
-              {/* Phase 2: Single route with via waypoints */}
-              <div className="routes">
-                <div className="route-header">
-                  <p>
-                    <strong>Chosen route:</strong>{" "}
-                    {baseRoutes[selectedBaseIndex]?.timeTaken} |{" "}
-                    {baseRoutes[selectedBaseIndex]?.distance}
-                  </p>
-                </div>
-              </div>
-              <hr />
-              <div className="places">
-                <div className="place-header">
-                  {loadingPlaces ? "Fetching places..." : "Places to Visit"}
-                </div>
-                <div className="place-list">
-                  {loadingPlaces ? (
+                <hr />
+                <div className="places">
+                  <div className="place-header">Places to Visit</div>
+                  <div className="place-list">
                     <div className="loading-placeholder">
-                      <span>Loading places...</span>
+                      <span>Select a route to see places</span>
                     </div>
-                  ) : places.length === 0 ? (
-                    <div className="loading-placeholder">
-                      <span>No places found</span>
-                    </div>
-                  ) : (
-                    places.map((p, i) => (
-                      <label
-                        key={i}
-                        className="place-item"
-                        onMouseEnter={() => setHoveredPlace(p)}
-                        onMouseLeave={() => setHoveredPlace(null)}
-                        style={{ display: "flex", alignItems: "center" }}
-                      >
-                        <div className="place-info" style={{ cursor: "pointer" }}>
-                          <span className="place-name">{p.name}</span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Phase 2: Single route with via waypoints */}
+                <div className="routes">
+                  <div className="route-header">
+                    <p>
+                      <strong>Chosen route:</strong>{" "}
+                      {baseRoutes[selectedBaseIndex]?.timeTaken} |{" "}
+                      {baseRoutes[selectedBaseIndex]?.distance}
+                    </p>
+                  </div>
+                </div>
+                <hr />
+                <div className="places">
+                  <div className="place-header">
+                    {loadingPlaces ? "Fetching places..." : "Places to Visit"}
+                  </div>
+                  <div className="place-list">
+                    {loadingPlaces ? (
+                      <div className="loading-placeholder">
+                        <span>Loading places...</span>
+                      </div>
+                    ) : places.length === 0 ? (
+                      <div className="loading-placeholder">
+                        <span>No places found</span>
+                      </div>
+                    ) : (
+                      places.map((p, i) => (
+                        <div
+                          key={i}
+                          className="place-item"
+                          onMouseEnter={() => setHoveredPlace(p)}
+                          onMouseLeave={() => setHoveredPlace(null)}
+                        >
+                          <div className="place-name">{p.name}</div>
+                          <input
+                            type="checkbox"
+                            checked={p.checked}
+                            onChange={() => handlePlaceToggle(i)}
+                          />
                         </div>
-                        <input
-                          type="checkbox"
-                          checked={p.checked}
-                          onChange={() => handlePlaceToggle(i)}
-                          style={{ marginRight: "8px" }}
-                        />
-                      </label>
-                    ))
-                  )}
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
-          <hr />
-          <div className="bottom-buttons">
-            <button id="navigate-btn" onClick={handleNavigateClick}>Navigate</button>
-            <button id="submit-btn">Submit</button>
+                <div className="bottom-buttons">
+                  <button id="navigate-btn" onClick={handleNavigateClick}>Navigate</button>
+                  <button id="submit-btn" onClick={handleSubmit}>Submit</button>
+                </div>
+              </>
+            )}
           </div>
         </div>
         <div className="map-area">

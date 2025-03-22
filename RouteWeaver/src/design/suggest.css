@@ -3,10 +3,11 @@
   flex-direction: column;
   width: 100vw;
   height: 100vh;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: #f8f9fa;
 }
 
-/* Fixed top bar */
+/* Top bar styling */
 .top-bar {
   position: fixed;
   top: 0;
@@ -16,208 +17,260 @@
   background-color: black;
   display: flex;
   align-items: center;
-  padding-left: 20px;
+  justify-content: space-between;
+  padding: 0 20px;
   z-index: 1000;
 }
 
 .suggest-container #name {
-  width: fit-content;
-  position: absolute;
-  top: -20px;
-  left: 30px;
-  z-index: 1000;
-  background-color: transparent;
-  border: none;
   color: white;
-  cursor: pointer;
   font-size: 24px;
   font-weight: 600;
+  position: absolute;
+  top: -15px;
+  left: 20px;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
   transition: all 0.3s ease;
+  padding: 8px 0;
 }
 
-/* Main content area */
+/* Main content layout */
 .main-content {
   display: flex;
-  flex: 1;
   margin-top: 60px;
+  height: calc(100vh - 60px);
 }
 
-/* Sidebar styles */
+/* Sidebar styling */
 .sidebar {
-  width: 33%;
+  width: 380px;
   background: white;
-  color: black;
-  padding: 20px;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
-  position: relative;
-  z-index: 10;
-}
-
-/* Routes and places containers */
-.routes, .places {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  height: 100%;
   position: relative;
 }
 
-.route-header, .place-header {
+.route-info {
+  padding: 20px 20px 0 20px;
+}
+
+.route-info h2 {
   font-size: 18px;
-  font-weight: bold;
-  margin-bottom: 10px;
+  color: #2c3e50;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e9ecef;
 }
 
-.route-list, .place-list {
+.sidebar h3 {
+  font-size: 20px;
+  color: #2c3e50;
+  margin: 0;
+  padding: 0 20px;
+}
+
+/* Route list styling */
+.route-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
+  padding: 16px 20px;
   overflow-y: auto;
-  max-height: 300px;
-  min-height: 200px;
 }
 
-/* Route items */
 .route-item {
-  flex-shrink: 0;
-  transition: all 0.3s ease;
+  background: #f0f2f5;
+  color: #2c3e50;
+  padding: 16px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: white;
-  background: #da9e48;
-  padding: 10px;
-  border-radius: 10px;
-  font-weight: 500;
-  width: 200px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  cursor: pointer;
   border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.route-item span {
+.route-item:hover {
+  background: #e2e8f0;
+  transform: translateX(4px);
+}
+
+/* Place list container */
+.place-list {
   flex: 1;
-  text-align: center;
-}
-
-.route-item .route-number {
-  flex: 0 0 30px;
-  text-align: left;
-  font-size: large;
-}
-.route-item .route-time {
-  flex: 1;
-  text-align: center;
-  font-size: small;
-}
-.route-item .route-distance {
-  flex: 0 0 50px;
-  text-align: right;
-  font-size: small;
-}
-
-.route-item:hover, .place-item:hover {
-  background: #b74c1a;
+  overflow-y: auto;
+  padding: 16px 20px;
+  margin-bottom: 80px;
 }
 
 /* Place items */
 .place-item {
-  flex-shrink: 0;
-  transition: all 0.3s ease;
-  width: 100%;
-  padding: 12px;
+  background: #f8f9fa;
+  padding: 16px;
   margin: 8px 0;
-  border: none;
-  border-radius: 8px;
-  background: rgb(203, 201, 201);
-  cursor: pointer;
-  text-align: left;
+  border-radius: 12px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-}
-.place-item .checkbox-container {
-  margin-left: 0px;
-}
-
-
-.place-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.place-name {
-  font-weight: 600;
-  color: #333;
-  font-size: 14px;
+  justify-content: space-between;
+  transition: all 0.2s ease;
+  cursor: pointer;
 }
 
-.place-details {
-  display: flex;
-  gap: 12px;
-  margin-top: 4px;
-  font-size: 12px;
-  color: #666;
+.place-item:hover {
+  background: #e9ecef;
+  transform: translateX(4px);
 }
 
+.place-item .place-name {
+  font-size: 15px;
+  color: #2c3e50;
+  margin-right: 12px;
+}
+
+.place-item input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 2px solid #3498db;
+  cursor: pointer;
+}
 
 /* Bottom buttons */
 .bottom-buttons {
-  margin-top: auto;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 16px 20px;
+  background: white;
+  border-top: 1px solid #e9ecef;
   display: flex;
-  flex-direction: row;
-  gap: 10px;
+  gap: 12px;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
 }
 
-.bottom-buttons #navigate-btn, #submit-btn {
-  background-color: #673b3b;
-  color: white;
-  padding: 10px;
+.bottom-buttons button {
+  flex: 1;
+  padding: 12px;
   border: none;
   border-radius: 8px;
-  width: 100%;
   font-size: 16px;
-  cursor: pointer;
   font-weight: 600;
-  transition: background 0.3s;
-}
-.bottom-buttons #navigate-btn:hover, #submit-btn:hover {
-  background-color: #4a2626;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-/* Map area */
-.map-area {
-  flex: 2;
-  position: relative;
-  z-index: 1;
+#navigate-btn {
+  background: #3498db;
+  color: white;
 }
 
-.map-area .leaflet-container {
-  width: 100%;
-  height: 100%;
+#submit-btn {
+  background: #2ecc71;
+  color: white;
 }
 
-/* Hoverbox overlay for place details */
-.hoverbox {
+#navigate-btn:hover, #submit-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+/* Reload button styling */
+.reload-button {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: none;
+  width: 40px;
+  border-radius: 38px;
+  padding: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: auto;
+}
+
+.reload-button:hover {
+  /* background: rgba(255, 255, 255, 0.2); */
+  transform: rotate(180deg);
+}
+
+/* Navigation box styling */
+.navbox {
   position: absolute;
-  bottom: 130px;
-  left: 20px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-  z-index: 1100;
-  max-width: 250px;
-  overflow: hidden;
-  pointer-events: none;
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 300px;
+}
+
+.navbox-title {
+  font-size: 18px;
+  color: #2c3e50;
+  margin: 0 0 16px 0;
+  text-align: center;
+}
+
+.navbox-options {
   display: flex;
   flex-direction: column;
+  gap: 12px;
+}
+
+.navbox-option {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  background: #f8f9fa;
+  color: #2c3e50;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.navbox-option:hover {
+  background: #e9ecef;
+  transform: translateX(4px);
+}
+
+/* Loading placeholder styling */
+.loading-placeholder {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  color: #6c757d;
+  font-style: italic;
+  background: #f8f9fa;
+  border-radius: 12px;
+  margin: 16px 0;
+}
+
+/* Hover box styling */
+.hoverbox {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  width: 300px;
+  z-index: 1000;
 }
 
 .hoverbox-image-container {
   width: 100%;
-  height: 150px;
+  height: 200px;
   overflow: hidden;
 }
 
@@ -228,108 +281,84 @@
 }
 
 .hoverbox-info {
-  padding: 8px;
-  text-align: center;
+  padding: 16px;
 }
 
 .hoverbox-name {
-  font-weight: bold;
-  margin-bottom: 4px;
   font-size: 16px;
-  color: #333;
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0 0 8px 0;
 }
 
 .hoverbox-meta {
   font-size: 14px;
-  color: #666;
+  color: #6c757d;
+  margin: 0;
 }
 
-/* Navigation Options Box (shown when "Navigate" button is clicked) */
-.navbox {
-  position: absolute;
-  top:120px; /* adjust position as needed */
-  right: 420px;
-  width: 500px;
-  height: fit-content;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-  z-index: 1200;
-  max-width: 750px;
-  padding: 10px;
-  display: flex;
-  flex-direction: row;
-  align-items: space-between;
+/* Map area styling */
+.map-area {
+  flex: 1;
+  position: relative;
+  display: block;
+  height: calc(100vh - 60px);
+  width: calc(100vw - 380px); /* Account for sidebar width */
 }
 
-.navbox-title {
-  font-weight: bold;
-  margin-bottom: 10px;
-  font-size: 16px;
-  color: #333;
-}
-
-.navbox-options {
-  display: flex;
-  flex-direction: row;
-  gap: 10px;
-  width: 100%;
-}
-
-.navbox-option {
-  background: #da9e48;
-  border: none;
-  border-radius: 6px;
-  padding: 8px;
-  color: white;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background 0.3s;
-}
-
-.navbox-option:hover {
-  background: #b74c1a;
-}
-
-
-/* Responsive adjustments */
+/* Responsive design */
 @media screen and (max-width: 800px) {
+  .top-bar {
+    padding: 0 16px;
+  }
+
+  .suggest-container #name {
+    position: static;
+    padding: 8px 0;
+  }
+
+  .reload-button {
+    margin-left: auto;
+  }
+
   .main-content {
     flex-direction: column;
   }
+
   .sidebar {
     width: 100%;
+    height: 50vh;
+    overflow-y: auto;
   }
-  .map-area {
+
+  .place-list {
+    padding: 16px;
+    margin-bottom: 90px;
+  }
+
+  .bottom-buttons {
+    position: fixed;
+    bottom: 0;
     width: 100%;
-    height: 300px;
-    margin-top: 0;
+    padding: 12px 16px;
+    background: white;
+    z-index: 1000;
   }
-  .suggest-container #name {
-    font-size: large;
-    left: 10px;
+
+  .map-area {
+    width: 100%; /* Full width on mobile */
+    height: 50vh;
   }
-}
 
-.route-list .route-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  height: 50px;
-}
+  .hoverbox {
+    width: calc(100% - 32px);
+    bottom: 90px;
+    right: 16px;
+    left: 16px;
+  }
 
-.route-list, .place-list {
-  contain: layout;
-}
-
-.loading-placeholder {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  color: #666;
-  font-style: italic;
-  padding: 20px;
-  text-align: center;
+  .navbox {
+    width: calc(100% - 32px);
+    max-width: none;
+  }
 }

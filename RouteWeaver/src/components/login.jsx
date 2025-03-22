@@ -45,7 +45,7 @@ const LoginPage = () => {
     try {
       const salt = await bcrypt.genSalt(11);
       const hashedpass = await bcrypt.hash(signupData.password, salt);
-      const response = await axios.post("http://localhost:5000/user/signup", {
+      const response = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/user/signup`, {
         email: signupData.email,
         password: hashedpass,
         username: signupData.username,
@@ -70,9 +70,9 @@ const LoginPage = () => {
     setError("");
     setLoading(true);
     try {
-      const response = await axios.post("http://localhost:5000/user/login", loginData);
+      const response = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/user/login`, loginData);
       if (response.status === 200) {
-        sessionStorage.setItem("email", loginData.email);
+        localStorage.setItem("email", loginData.email);
         navigate(response.data.redirectUrl);
       }
     } catch (error) {
