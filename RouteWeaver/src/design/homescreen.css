@@ -7,58 +7,112 @@
 }
 
 body {
-  font-family: 'Montserrat', sans-serif;
+  /* font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'; */
   background-color: #0a0a0a;
   color: #ffffff;
   overflow-x: hidden;
 }
 
 .home-container {
+  /* font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'; */
   min-height: 100vh;
   position: relative;
 }
 
-/* Navigation Bar */
+/* Navbar styles - similar to travelpackage.jsx */
 .navbar {
-  position:fixed;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  width: 100%;
+  position: fixed;
   top: 0;
-  right: 0;
-  padding-left: 2rem;
-  z-index: 100;
+  left: 0;
+  z-index: 1000;
+  transition: background-color 0.3s ease;
 }
 
-.navbar ul {
+.navbar.scrolled {
+  background-color: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.nav-links {
   display: flex;
-  list-style: none;
+  align-items: center;
   gap: 2rem;
 }
 
-.navbar a {
-  color: #ffffff;
+.nav-links a {
+  color: white;
   text-decoration: none;
-  font-size: 0.8rem;
-  letter-spacing: 2px;
-  transition: all 0.3s ease;
-  position: relative;
+  transition: color 0.3s ease;
 }
 
-.navbar a:hover {
-  color: #f0f0f0;
+.nav-links h4 {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  font-weight: 500;
+  font-size: 1rem;
+  margin: 0;
 }
 
-.navbar a:after {
-  content: '';
+.nav-links a:hover {
+  color: #da9e48;
+}
+
+.profile-icon {
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.profile-icon:hover {
+  color: #da9e48;
+}
+
+.profile-dropdown {
   position: absolute;
-  width: 0;
-  height: 1px;
-  bottom: -5px;
-  left: 0;
-  background-color: #ffffff;
-  transition: width 0.3s ease;
+  top: 60px;
+  right: 20px;
+  background-color: #222;
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
 }
 
-.navbar a:hover:after {
-  width: 100%;
+.profile-dropdown a {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+.profile-dropdown a:hover {
+  background-color: #333;
+}
+
+/* Remove the old #name styling that conflicts with navbar */
+.home-container #name {
+  background-color: transparent;
+  border: none;
+  color: white;
+  cursor: pointer;
+  top: 0px;
+  left: 20px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-family: 'Playfair Display', serif;
+  padding: 0.5rem 0;
+  transition: color 0.3s ease;
+  position: static;
+}
+
+#name:hover {
+  color: #da9e48;
 }
 
 /* Hero Section */
@@ -81,7 +135,7 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.9));
+  /* background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.9)); */
 }
 
 .logo {
@@ -153,7 +207,19 @@ body {
   text-shadow: 0 0 15px rgba(255, 255, 255, 0.8); /* Keeps the glowing effect */
   transition: all 0.3s ease;
 }
-
+.greeting {
+  position: relative;
+  top: -170px; /* adjust this value as needed to move it higher */
+  /* keep the other properties as is */
+  height: fit-content;
+  background-color: rgba(0, 0, 0, 0);
+  font-size: 3rem;
+  font-style: italic;
+  font-weight: 500;
+  color: #ffffff;
+  text-align: center;
+  display: block;
+}
 .new-routes {
   height: fit-content;
   background-color: rgba(0, 0, 0, 0);
@@ -193,14 +259,18 @@ body {
   width: 100%;
 }
 
-/* Agency Description */
-.agency-description {
-  padding: 8rem 2rem;
-  display: flex;
-  justify-content: flex-end;
+/* Agency Description */.agency-description {
+  max-width: auto;
+  height:300px;
+  max-height: 600px;
+  margin:  auto;
+  padding: 20px;
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   opacity: 0;
-  transform: translateY(30px);
-  transition: all 1s ease;
+  transform: translateY(20px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
 }
 
 .agency-description.show {
@@ -209,10 +279,11 @@ body {
 }
 
 .agency-description p {
-  font-family: 'Playfair Display', serif;
-  font-size: 1.8rem;
+  font-size: 47px;
+  font-weight: 600;
+  font-style: italic;
   line-height: 1.6;
-  max-width: 600px;
+  color: #333;
   text-align: right;
 }
 
@@ -393,6 +464,15 @@ body {
   color: #999;
 }
 
+.search-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #999;
+  margin-top: 1rem;
+  font-style: italic;
+  font-size: 0.9rem;
+}
 
 /* Responsive Design */
 @media (max-width: 768px) {
@@ -473,5 +553,302 @@ body {
   .tile {
     padding: 1rem;
     font-size:1rem;
+  }
+}
+
+/* Smart Vacay Styles */
+.smart-vacay-container {
+  width: 100%;
+  height: 100%;
+}
+
+.smart-vacay-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.smart-vacay-header h3 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.refresh-button {
+  background: none;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.refresh-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  transform: rotate(90deg);
+}
+
+.loading-spinner {
+  text-align: center;
+  padding: 1rem;
+  color: #999;
+  font-style: italic;
+}
+
+.error-message {
+  color: #ff6b6b;
+  padding: 1rem;
+  text-align: center;
+}
+
+.no-suggestions {
+  color: #999;
+  padding: 1rem;
+  text-align: center;
+  font-style: italic;
+}
+
+.suggestion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.suggestion-item {
+  background-color: #222;
+  border-radius: 8px;
+  padding: 1rem;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.suggestion-item:hover {
+  background-color: #333;
+  transform: translateY(-2px);
+}
+
+.suggestion-dates {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #da9e48;
+}
+
+.suggestion-destination {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.destination-icon {
+  color: #da9e48;
+}
+
+.suggestion-details {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  color: #aaa;
+}
+
+/* Location search for SmartVacay */
+.location-search {
+  width: 100%;
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.location-search input {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border-radius: 6px;
+  border: 1px solid #333;
+  background-color: #222;
+  color: #fff;
+  font-size: 1rem;
+}
+
+.location-search input::placeholder {
+  color: #777;
+}
+
+.location-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  max-height: 200px;
+  overflow-y: auto;
+  background-color: #222;
+  border: 1px solid #333;
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  z-index: 10;
+}
+
+.location-suggestion-item {
+  padding: 0.8rem 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.location-suggestion-item:hover {
+  background-color: #333;
+}
+
+/* SmartVacay Destination Suggestions */
+.destination-suggestions {
+  margin: 1.5rem 0;
+}
+
+.destination-suggestions h3 {
+  margin-bottom: 1rem;
+  color: #ffffff;
+}
+
+.loading-destinations {
+  padding: 1rem;
+  text-align: center;
+  color: #aaaaaa;
+  background-color: #222222;
+  border-radius: 8px;
+}
+
+.suggestions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.suggestion-card {
+  padding: 1rem;
+  background-color: #222222;
+  border-radius: 8px;
+  border: 1px solid #333333;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.suggestion-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.suggestion-card.selected {
+  border: 2px solid #4CAF50;
+  background-color: #1e2e1e;
+}
+
+.suggestion-card h4 {
+  margin: 0 0 0.5rem 0;
+  color: #ffffff;
+}
+
+.suggestion-card p {
+  margin: 0.3rem 0;
+  font-size: 0.9rem;
+  color: #aaaaaa;
+}
+
+.no-destinations {
+  padding: 1rem;
+  text-align: center;
+  color: #aaaaaa;
+  background-color: #222222;
+  border-radius: 8px;
+  border: 1px dashed #444444;
+}
+
+.destination-actions {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+.view-route-btn {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 30px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.view-route-btn:hover {
+  background-color: #45a049;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.view-route-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Date Selection Styles */
+.date-selection {
+  margin: 2rem 0;
+  background-color: #222222;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.date-selection h3 {
+  margin-bottom: 1rem;
+  color: #ffffff;
+}
+
+.date-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.date-field label {
+  font-size: 0.9rem;
+  color: #aaaaaa;
+}
+
+.date-field input {
+  padding: 0.7rem;
+  border-radius: 6px;
+  border: 1px solid #333333;
+  background-color: #111111;
+  color: #ffffff;
+}
+
+.trip-length-display {
+  margin-top: 1rem;
+  padding: 0.7rem;
+  background-color: #333333;
+  border-radius: 6px;
+  text-align: center;
+  color: #ffffff;
+}
+
+.trip-length-display strong {
+  color: #4CAF50;
+}
+
+@media (max-width: 480px) {
+  .date-inputs {
+    grid-template-columns: 1fr;
   }
 }

@@ -12,6 +12,15 @@ function Questions() {
   const [suggestions, setSuggestions] = useState([]); // Suggestions for autocomplete
   const [activeField, setActiveField] = useState(null); // "destination" or "location"
 
+  // Check if user is logged in
+  useEffect(() => {
+    const userEmail = localStorage.getItem("userEmail");
+    if (!userEmail) {
+      console.log("User not logged in, redirecting to login page");
+      navigate("/");
+    }
+  }, [navigate]);
+
   // Extended keywords list
   const keywords = [
     { id: 1, name: 'Restaurant', icon: '🍽️' },
@@ -50,7 +59,6 @@ function Questions() {
     { id: 35, name: 'Aquarium', icon: '🐠' },
     { id: 36, name: 'Concert Hall', icon: '🎻' },
     { id: 38, name: 'Hotel', icon: '🏨' },
-    
   ];
 
   // Debounce and fetch suggestions from Nominatim
@@ -87,17 +95,12 @@ function Questions() {
     setSuggestions([]);
   };
 
-  // Moved the logic that saves selected keywords to session storage
-  // so that we allow zero keywords to proceed.
   const handleNext = () => {
     if (currentStep === 4) {
-      // Save selected keywords to sessionStorage (even if empty)
       const selectedKeywordNames = selectedKeywords.map(id => {
         const kw = keywords.find(k => k.id === id);
         return kw ? kw.name : null;
       }).filter(name => name);
-
-      // Store them (could be an empty array if user picked none)
       sessionStorage.setItem("selectedKeywords", JSON.stringify(selectedKeywordNames));
       navigate("/suggestions");
     } else {
@@ -144,7 +147,7 @@ function Questions() {
             <p id="text2">Where do you want to go?</p>
             <div className="search-bar-container">
               <input
-                id="search-bar"
+                id="search-bar2"
                 value={destination}
                 type="text"
                 placeholder="Search destination..."
@@ -153,12 +156,26 @@ function Questions() {
               />
               {activeField === "destination" && suggestions.length > 0 && (
                 <ul className="suggestions-list">
-                  {suggestions.map((sugg) => (
-                    <li key={sugg.place_id} onClick={() => handleSuggestionClick(sugg, "destination")}>
-                      {sugg.display_name}
-                    </li>
-                  ))}
-                </ul>
+                {suggestions.map((sugg) => (
+                  <li
+                    key={sugg.place_id}
+                    onClick={() => handleSuggestionClick(sugg, "destination")}
+                  >
+                    {sugg.display_name}
+                  </li>
+                ))}
+              </ul>
+                // <div className="location-suggestions">
+                //   {suggestions.map((sugg) => (
+                //     <div
+                //       key={sugg.place_id}
+                //       className="location-suggestion-item"
+                //       onClick={() => handleSuggestionClick(sugg, "destination")}
+                //     >
+                //       {sugg.display_name}
+                //     </div>
+                //   ))}
+                // </div>
               )}
             </div>
             <div className="move">
@@ -173,7 +190,7 @@ function Questions() {
             <p id="text2">Where will you start from?</p>
             <div className="search-bar-container">
               <input
-                id="search-bar1"
+                id="search-bar2"
                 value={location}
                 type="text"
                 placeholder="Search origin..."
@@ -181,13 +198,17 @@ function Questions() {
                 onChange={(e) => setLocation(e.target.value)}
               />
               {activeField === "location" && suggestions.length > 0 && (
-                <ul className="suggestions-list">
+                <div className="location-suggestions">
                   {suggestions.map((sugg) => (
-                    <li key={sugg.place_id} onClick={() => handleSuggestionClick(sugg, "location")}>
+                    <div
+                      key={sugg.place_id}
+                      className="location-suggestion-item"
+                      onClick={() => handleSuggestionClick(sugg, "location")}
+                    >
                       {sugg.display_name}
-                    </li>
+                    </div>
                   ))}
-                </ul>
+                </div>
               )}
             </div>
             <div className="move">
@@ -247,11 +268,6 @@ function Questions() {
             </div>
             <div className="move">
               <button id="back" onClick={handleBack}></button>
-              {/* 
-                IMPORTANT CHANGE:
-                Removed "disabled={selectedKeywords.length === 0}" 
-                so user can proceed even with zero keywords.
-              */}
               <button id="next" onClick={handleNext}></button>
             </div>
           </div>

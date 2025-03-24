@@ -13,8 +13,9 @@ const SavedRoutes = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   useEffect(() => {
-    const email = localStorage.getItem('email');
-    if (!email) {
+    const userEmail = localStorage.getItem('userEmail');
+    if (!userEmail) {
+      console.log("User not logged in, redirecting to login page");
       navigate('/', { replace: true });
     }
   }, [navigate]);
@@ -23,10 +24,10 @@ const SavedRoutes = () => {
     const fetchRoutes = async () => {
       setLoading(true);
       try {
-        const user = localStorage.getItem('email');
-        console.log("Fetching routes for user:", user);
+        const userEmail = localStorage.getItem('userEmail');
+        console.log("Fetching routes for user:", userEmail);
         
-        if (!user) {
+        if (!userEmail) {
           console.warn("No user email found in local storage");
           setError("You need to be logged in to view saved routes");
           setLoading(false);
@@ -34,7 +35,7 @@ const SavedRoutes = () => {
         }
         
         const response = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/saved`, 
-          { email: user },
+          { email: userEmail },
           { headers: { 'Content-Type': 'application/json' } }
         );
         

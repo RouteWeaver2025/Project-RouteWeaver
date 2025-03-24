@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import bcrypt from "bcryptjs";
 import { useNavigate } from "react-router-dom";
@@ -22,6 +22,15 @@ const LoginPage = () => {
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  
+  // Check if user is already logged in
+  useEffect(() => {
+    const userEmail = localStorage.getItem("userEmail");
+    if (userEmail) {
+      console.log("User already logged in, redirecting to home");
+      navigate("/home");
+    }
+  }, [navigate]);
 
   // Handle Signup Input Changes
   const handleSignupChange = (e) => {
@@ -51,7 +60,11 @@ const LoginPage = () => {
         username: signupData.username,
       });
       if (response.status === 201) {
-        sessionStorage.setItem("email", signupData.email); // Store email in sessionStorage
+        // Store email in both sessionStorage and localStorage
+        sessionStorage.setItem("userEmail", signupData.email);
+        localStorage.setItem("userEmail", signupData.email);
+        // Store username directly too
+        sessionStorage.setItem("user", signupData.username);
         navigate(response.data.redirectUrl);// Redirect to Home Page
       }
       else {
@@ -63,8 +76,7 @@ const LoginPage = () => {
     }
   };
 
-  // Handle Login Submit (Redirect without validation)
-
+  // Handle Login Submit
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -72,7 +84,29 @@ const LoginPage = () => {
     try {
       const response = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/user/login`, loginData);
       if (response.status === 200) {
-        localStorage.setItem("email", loginData.email);
+        // Store email in both sessionStorage and localStorage
+        sessionStorage.setItem("userEmail", loginData.email);
+        localStorage.setItem("userEmail", loginData.email);
+        
+        // Store username from login response if available
+        if (response.data && response.data.username) {
+          console.log("Storing username from login response:", response.data.username);
+          sessionStorage.setItem("user", response.data.username);
+        } else {
+          // Fallback to fetching profile if username not in response
+          try {
+            const userResponse = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/user/getProfile`, {
+              params: { email: loginData.email }
+            });
+            
+            if (userResponse.data && userResponse.data.username) {
+              sessionStorage.setItem("user", userResponse.data.username);
+            }
+          } catch (err) {
+            console.error("Error fetching username during login:", err);
+          }
+        }
+        
         navigate(response.data.redirectUrl);
       }
     } catch (error) {

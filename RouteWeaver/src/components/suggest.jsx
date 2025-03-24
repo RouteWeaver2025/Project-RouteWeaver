@@ -525,6 +525,17 @@ export default function SuggestPage() {
     }
   }, []);
 
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  
+  // Check if user is logged in
+  useEffect(() => {
+    const userEmail = localStorage.getItem("userEmail");
+    if (!userEmail) {
+      console.log("User not logged in, redirecting to login page");
+      navigate("/");
+    }
+  }, [navigate]);
+
   // 1) On mount, fetch coordinates
   useEffect(() => {
     (async () => {
@@ -705,11 +716,8 @@ export default function SuggestPage() {
       // Debug session storage contents
       console.log("Session storage contents:", Object.entries(sessionStorage));
       
-      // Get user email with correct check for 'email' in sessionStorage
-      const userEmail = localStorage.getItem("email") || 
-                       sessionStorage.getItem("email") || 
-                       localStorage.getItem("userEmail") || 
-                       sessionStorage.getItem("userEmail");
+      // Get user email with correct key
+      const userEmail = localStorage.getItem("userEmail") || sessionStorage.getItem("userEmail");
       
       if (!userEmail) {
         alert("You need to be logged in to save routes. Please log in and try again.");

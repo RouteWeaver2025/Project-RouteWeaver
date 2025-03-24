@@ -692,4 +692,389 @@ router.get("/routesByPlaceNames", async (req, res) => {
   }
 });
 
+// ----------------------- SMART VACAY FUNCTIONS -----------------------
+
+// Cache for popular destinations to avoid repeated API calls
+const popularDestinationsCache = new Map();
+
+// Endpoint to fetch popular tourist destinations within a specific distance range
+router.get("/popularDestinations", async (req, res) => {
+  try {
+    const { origin, minDistance = 50, maxDistance = 500, limit = 4 } = req.query;
+    
+    if (!origin) {
+      return res.status(400).json({ error: "Origin is required" });
+    }
+    
+    // Generate cache key
+    const cacheKey = `${origin}-${minDistance}-${maxDistance}`;
+    
+    // Check if we have cached results
+    if (popularDestinationsCache.has(cacheKey)) {
+      const cachedData = popularDestinationsCache.get(cacheKey);
+      // Check if cache is still fresh (less than 24 hours old)
+      if (Date.now() - cachedData.timestamp < 24 * 60 * 60 * 1000) {
+        return res.json({
+          destinations: cachedData.destinations.slice(0, parseInt(limit))
+        });
+      }
+    }
+    
+    // First, get coordinates for the origin
+    const originCoords = await geocodeLocation(origin);
+    if (!originCoords) {
+      return res.status(400).json({ error: "Could not geocode origin location" });
+    }
+    
+    // Fetch popular tourist destinations
+    const destinations = await fetchPopularTouristDestinations(
+      originCoords.lat, 
+      originCoords.lng, 
+      parseFloat(minDistance) * 1000, // Convert to meters
+      parseFloat(maxDistance) * 1000  // Convert to meters
+    );
+    
+    // Calculate distance from origin to each destination
+    const destinationsWithDistance = destinations.map(dest => {
+      const distance = calculateDistance(
+        originCoords.lat, 
+        originCoords.lng,
+        dest.lat,
+        dest.lng
+      ) / 1000; // Convert to km
+      
+      return {
+        ...dest,
+        distance
+      };
+    });
+    
+    // Filter destinations by distance range
+    const filteredDestinations = destinationsWithDistance.filter(dest => 
+      dest.distance >= parseFloat(minDistance) && 
+      dest.distance <= parseFloat(maxDistance)
+    );
+    
+    // Randomize the order for variety
+    const shuffledDestinations = shuffleArray(filteredDestinations);
+    
+    // Cache the results
+    popularDestinationsCache.set(cacheKey, {
+      destinations: shuffledDestinations,
+      timestamp: Date.now()
+    });
+    
+    res.json({
+      destinations: shuffledDestinations.slice(0, parseInt(limit))
+    });
+  } catch (error) {
+    console.error("Error fetching popular destinations:", error);
+    res.status(500).json({ error: "Failed to fetch popular destinations" });
+  }
+});
+
+/**
+ * Fetch potential vacation destinations based on a location and distance requirements
+ * 
+ * Query params:
+ * - location: Starting location (e.g., "Delhi, India")
+ * - tripType: "short", "medium", or "long"
+ */
+router.get('/vacationDestinations', async (req, res) => {
+  try {
+    const { location, tripType } = req.query;
+    
+    if (!location) {
+      return res.status(400).json({ error: 'Location is required' });
+    }
+
+    // Define distance ranges based on trip type
+    let minDistance = 50; // km
+    let maxDistance = 150; // km
+    
+    switch (tripType) {
+      case 'short':
+        minDistance = 50;
+        maxDistance = 150;
+        break;
+      case 'medium':
+        minDistance = 150;
+        maxDistance = 300;
+        break;
+      case 'long':
+        minDistance = 300;
+        maxDistance = 1000;
+        break;
+      default:
+        // Default to medium trip
+        minDistance = 150;
+        maxDistance = 300;
+    }
+    
+    console.log(`Searching for ${tripType} trip destinations ${minDistance}-${maxDistance}km from ${location}`);
+
+    // First geocode the starting location
+    const originCoords = await geocodeLocation(location);
+    if (!originCoords) {
+      return res.status(400).json({ error: "Could not geocode origin location" });
+    }
+
+    console.log(`Geocoded ${location} to:`, originCoords);
+
+    // Find tourist destinations within the specified range using our existing function
+    const destinations = await fetchPopularTouristDestinations(
+      originCoords.lat,
+      originCoords.lng,
+      minDistance * 1000, // Convert to meters
+      maxDistance * 1000  // Convert to meters
+    );
+
+    if (!destinations || destinations.length === 0) {
+      console.log(`No destinations found for ${location} within ${minDistance}-${maxDistance}km range`);
+      return res.status(404).json({ 
+        error: "No destinations found",
+        message: `No suitable destinations found within ${minDistance}-${maxDistance}km of ${location}`
+      });
+    }
+
+    // Calculate distance from origin to each destination
+    const destinationsWithDistance = destinations.map(dest => {
+      const distance = calculateDistance(
+        originCoords.lat, 
+        originCoords.lng,
+        dest.lat,
+        dest.lng
+      ) / 1000; // Convert to km
+      
+      return {
+        ...dest,
+        distance: Math.round(distance) // Round to nearest km
+      };
+    });
+    
+    // Filter destinations by distance range
+    const filteredDestinations = destinationsWithDistance.filter(dest => 
+      dest.distance >= minDistance && dest.distance <= maxDistance
+    );
+    
+    // If we don't have enough destinations, adjust the range
+    let finalDestinations = filteredDestinations;
+    
+    if (filteredDestinations.length < 3) {
+      console.log(`Only found ${filteredDestinations.length} destinations, expanding search range`);
+      
+      // Expand the range by 50% 
+      const expandedMinDistance = Math.max(10, minDistance * 0.5);
+      const expandedMaxDistance = maxDistance * 1.5;
+      
+      finalDestinations = destinationsWithDistance.filter(dest => 
+        dest.distance >= expandedMinDistance && dest.distance <= expandedMaxDistance
+      );
+    }
+    
+    // Sort by a combination of rating and distance
+    finalDestinations.sort((a, b) => {
+      // If ratings are available and differ significantly, sort by rating
+      if (a.rating && b.rating && Math.abs(a.rating - b.rating) > 1) {
+        return b.rating - a.rating;
+      }
+      // Otherwise sort by distance
+      return a.distance - b.distance;
+    });
+    
+    // Take top 3
+    const topDestinations = finalDestinations.slice(0, 3);
+    
+    // If we still don't have enough destinations, add hardcoded fallbacks
+    if (topDestinations.length < 3) {
+      console.log(`Only found ${topDestinations.length} destinations after expanding range, adding fallbacks`);
+      
+      // Get fallback destinations based on trip type
+      const fallbacks = [
+        // Short trips
+        { 
+          name: "Munnar, Kerala", 
+          distance: tripType === 'short' ? 70 : (tripType === 'medium' ? 200 : 450), 
+          coords: { lat: 10.0889, lng: 77.0595 },
+          rating: 4.7 
+        },
+        { 
+          name: "Coorg, Karnataka", 
+          distance: tripType === 'short' ? 120 : (tripType === 'medium' ? 250 : 500), 
+          coords: { lat: 12.4244, lng: 75.7382 },
+          rating: 4.5 
+        },
+        { 
+          name: "Pondicherry", 
+          distance: tripType === 'short' ? 150 : (tripType === 'medium' ? 280 : 550), 
+          coords: { lat: 11.9416, lng: 79.8083 },
+          rating: 4.4 
+        },
+        { 
+          name: "Goa", 
+          distance: tripType === 'short' ? 140 : (tripType === 'medium' ? 250 : 550), 
+          coords: { lat: 15.2993, lng: 74.1240 },
+          rating: 4.6 
+        },
+        { 
+          name: "Ooty, Tamil Nadu", 
+          distance: tripType === 'short' ? 130 : (tripType === 'medium' ? 250 : 500), 
+          coords: { lat: 11.4102, lng: 76.6950 },
+          rating: 4.5 
+        },
+        { 
+          name: "Varanasi, Uttar Pradesh", 
+          distance: tripType === 'medium' ? 300 : 600, 
+          coords: { lat: 25.3176, lng: 82.9739 },
+          rating: 4.3 
+        }
+      ];
+      
+      // Add fallbacks until we have 3 destinations, but don't add duplicates
+      for (const fallback of fallbacks) {
+        if (topDestinations.length >= 3) break;
+        
+        // Check if this fallback is already in the list
+        const isDuplicate = topDestinations.some(dest => 
+          dest.name === fallback.name || 
+          (Math.abs(dest.lat - fallback.coords.lat) < 0.01 && 
+           Math.abs(dest.lng - fallback.coords.lng) < 0.01)
+        );
+        
+        if (!isDuplicate) {
+          topDestinations.push(fallback);
+        }
+      }
+    }
+
+    res.json({
+      origin: {
+        name: location,
+        coords: originCoords
+      },
+      destinations: topDestinations
+    });
+  } catch (error) {
+    console.error('Error in /vacationDestinations:', error);
+    res.status(500).json({ 
+      error: 'Error fetching vacation destinations',
+      details: error.message 
+    });
+  }
+});
+
+// Function to geocode a location string to coordinates
+async function geocodeLocation(locationString) {
+  try {
+    const encodedLocation = encodeURIComponent(locationString);
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedLocation}&key=${GOOGLE_MAPS_API_KEY}`;
+    
+    const response = await axios.get(url);
+    
+    if (response.data.status === "OK" && response.data.results.length > 0) {
+      const location = response.data.results[0].geometry.location;
+      return {
+        lat: location.lat,
+        lng: location.lng,
+        formattedAddress: response.data.results[0].formatted_address
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error("Error geocoding location:", error);
+    return null;
+  }
+}
+
+// Function to fetch popular tourist destinations based on distance
+async function fetchPopularTouristDestinations(lat, lng, minDistance, maxDistance) {
+  try {
+    // Define tourist destination types
+    const touristTypes = [
+      "tourist_attraction",
+      "point_of_interest",
+      "natural_feature",
+      "park",
+      "museum",
+      "landmark",
+      "historical_landmark",
+      "neighborhood"
+    ];
+    
+    // Create concentric search rings to find places at different distances
+    const searchRadii = [];
+    const numberOfRings = 5;
+    
+    for (let i = 0; i < numberOfRings; i++) {
+      const radius = minDistance + (i * ((maxDistance - minDistance) / (numberOfRings - 1)));
+      searchRadii.push(radius);
+    }
+    
+    // Fetch places at each radius
+    const allDestinations = [];
+    
+    for (const radius of searchRadii) {
+      for (const type of touristTypes) {
+        try {
+          // Add a small delay to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 200));
+          
+          const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${type}&keyword=tourist&rankby=prominence&key=${GOOGLE_MAPS_API_KEY}`;
+          
+          const response = await axios.get(url);
+          
+          if (response.data.status === "OK" && response.data.results.length > 0) {
+            // Process and filter places
+            const places = response.data.results
+              // Filter for high-rated places when possible
+              .filter(place => !place.rating || place.rating >= 4.0)
+              // Map to simpler format
+              .map(place => ({
+                place_id: place.place_id,
+                name: place.name,
+                lat: place.geometry.location.lat,
+                lng: place.geometry.location.lng,
+                rating: place.rating || 0,
+                types: place.types || [],
+                photo: place.photos && place.photos.length > 0 ? place.photos[0].photo_reference : null
+              }));
+            
+            allDestinations.push(...places);
+          }
+        } catch (error) {
+          console.error(`Error fetching places for type ${type} at radius ${radius}:`, error);
+          // Continue with other types and radii
+        }
+      }
+    }
+    
+    // Deduplicate by place_id
+    const uniqueDestinations = [];
+    const seenIds = new Set();
+    
+    for (const dest of allDestinations) {
+      if (!seenIds.has(dest.place_id)) {
+        seenIds.add(dest.place_id);
+        uniqueDestinations.push(dest);
+      }
+    }
+  
+    return uniqueDestinations;
+  } catch (error) {
+    console.error("Error fetching popular tourist destinations:", error);
+    return [];
+  }
+}
+
+// Fisher-Yates shuffle algorithm for randomizing destinations
+function shuffleArray(array) {
+  const newArray = [...array];
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+  }
+  return newArray;
+}
+
 export default router;

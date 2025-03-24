@@ -6,7 +6,7 @@
   height: 100vh;
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   background-image: url(../assets/airplane.jpg); 
   background-size: cover;
   background-position: center;
@@ -96,6 +96,31 @@
     width: 170px;
     height: 170px;
   }
+}
+/* Add this to query.css */
+
+/* Styles for the suggestions list */
+.location-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.location-suggestion-item {
+  padding: 10px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.location-suggestion-item:hover {
+  background: rgba(218, 158, 72, 0.8);
 }
 
 
@@ -206,7 +231,7 @@
   transform: none;
 }
 
-#search-bar, #search-bar1 {
+/* #search-bar, #search-bar1 {
   width: 90%;
   max-width: 400px;
   padding: 15px;
@@ -228,6 +253,67 @@
 
 #search-bar::placeholder, #search-bar1::placeholder {
   color: rgba(255, 255, 255, 0.6);
+} */
+/* Position the container so suggestions can absolutely position below it */
+.search-bar-container {
+  position: relative;    /* important for the .suggestions-list to appear under the input */
+  width: 100%;
+  max-width: 400px;      /* adjust as needed */
+  margin: 20px auto;     /* center it on the page, optional */
+}
+
+/* Style the input */
+#search-bar2 {
+  width: 100%;
+  padding: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  font-size: 16px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  backdrop-filter: blur(5px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+#search-bar2:focus {
+  outline: none;
+  border-color: #da9e48; /* highlight color on focus */
+  box-shadow: 0 4px 12px rgba(218, 158, 72, 0.2);
+}
+
+#search-bar2::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Autocomplete container (the list) */
+.suggestions-list {
+  position: absolute; /* positions it below the input */
+  top: 100%;          /* just below the input */
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0;
+  list-style-type: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  backdrop-filter: blur(5px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 1000;      /* stay above other elements */
+  max-height: 200px;  /* limit height if many suggestions */
+  overflow-y: auto;   /* scroll if needed */
+}
+
+/* Individual suggestion items */
+.suggestions-list li {
+  padding: 10px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+  color: white;
+}
+
+.suggestions-list li:hover {
+  background: rgba(93, 82, 65, 0.8);
 }
 
 /*third query*/

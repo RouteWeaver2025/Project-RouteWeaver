@@ -1,6 +1,6 @@
 import express from "express";
 import { mongoconnect } from "../utils/connection.js";
-import {findUserByEmail, addUser} from "../utils/fetchdata.js";
+import {findUserByEmail, addUser, getProfile} from "../utils/fetchdata.js";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -16,5 +16,9 @@ router
 router
   .route('/signup')
   .post(addUser)
+
+router
+  .route('/getProfile')
+  .get(getProfile)
 
 export {router};
