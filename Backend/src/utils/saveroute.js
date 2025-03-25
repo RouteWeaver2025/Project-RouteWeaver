@@ -73,9 +73,26 @@ async function addRoute(req, res) {
     // Generate new ID or use provided one
     let newId;
     if (id === "x") {
-      newId = userRoute.routes.length > 0
-        ? Math.max(...userRoute.routes.map(r => r.id)) + 1
-        : 1;
+      // Check if there are existing routes for this user
+      if (userRoute.routes.length > 0) {
+        // Find the maximum ID for this user and add 1
+        newId = Math.max(...userRoute.routes.map(r => r.id)) + 1;
+      } else {
+        // Find the maximum ID across all users to ensure global uniqueness
+        try {
+          const allRoutes = await Route.find({});
+          const allIds = allRoutes
+            .flatMap(route => route.routes.map(r => r.id))
+            .filter(id => typeof id === 'number');
+          
+          newId = allIds.length > 0 ? Math.max(...allIds) + 1 : 1;
+          console.log(`Generated globally unique ID: ${newId}`);
+        } catch (error) {
+          console.warn("Error finding max route ID, falling back to timestamp-based ID:", error);
+          // Fallback to a timestamp-based ID
+          newId = Math.floor(Date.now() / 1000); // Unix timestamp
+        }
+      }
     } else {
       newId = parseInt(id);
     }

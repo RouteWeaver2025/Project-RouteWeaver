@@ -86,6 +86,14 @@ const SavedRoutes = () => {
     console.log(`Navigating to route with ID: ${routeId}`);
   };
 
+  // Handle sign out functionality
+  const handleSignOut = () => {
+    // Remove user data from localStorage and sessionStorage
+    localStorage.removeItem('userEmail');
+    sessionStorage.clear();
+    // Navigate to login page
+    navigate('/');
+  };
 
   return (
     <div className="saver-container">
@@ -105,7 +113,7 @@ const SavedRoutes = () => {
               <a href="#profile">My Profile</a>
               <a href="#settings">Settings</a>
               <a href="#switch">Switch Account</a>
-              <a href="#signout">Sign Out</a>
+              <a href="#signout" onClick={handleSignOut}>Sign Out</a>
             </div>
           )}
         </div>

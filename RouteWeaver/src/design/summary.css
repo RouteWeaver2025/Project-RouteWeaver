@@ -26,18 +26,18 @@ body, html {
     background-color: #f8f9fa;
 }
 
-/* Top bar styling */
+/* Make top bar completely transparent */
 .top-bar {
-    position: fixed;
+    position: absolute;
     top: 0;
-    left: 0;
+    right: 0;
     width: 100%;
     height: 60px;
-    background-color: black;
+    background-color: transparent;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 0 20px;
+    justify-content: flex-end;
+    padding: 0 30px;
     z-index: 1000;
 }
 
@@ -45,22 +45,24 @@ body, html {
     color: white;
     font-size: 24px;
     font-weight: 600;
-    position: absolute;
-    top: -15px;
-    left: 20px;
     background-color: transparent;
     border: none;
     cursor: pointer;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
     transition: all 0.3s ease;
-    padding: 8px 0;
+    padding: 0;
+    margin: 0;
 }
 
-/* Content layout */
+.summary-container #name:hover {
+    color: #da9e48;
+}
+
+/* Content layout - remove top margin since navbar is transparent */
 .content-container {
     display: flex;
-    margin-top: 60px;
-    height: calc(100vh - 60px);
+    height: 100vh;
+    width: 100%;
 }
 
 /* Sidebar styling */
@@ -193,7 +195,7 @@ body, html {
     flex: 1;
     position: relative;
     display: block;
-    height: calc(100vh - 60px);
+    height: 100vh;
     width: calc(100vw - 380px); /* Account for sidebar width */
 }
 
@@ -422,4 +424,84 @@ body, html {
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   z-index: 0;
+}
+
+/* Add nav-links styling for summary page */
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.nav-links h4 {
+    color: white;
+    margin: 0;
+    font-size: 16px;
+    text-decoration: none;
+}
+
+.nav-links a {
+    text-decoration: none;
+}
+
+.profile-icon {
+    color: white;
+    cursor: pointer;
+}
+
+.profile-dropdown {
+    position: absolute;
+    top: 60px;
+    right: 20px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 8px 0;
+    min-width: 160px;
+    z-index: 1001;
+}
+
+.profile-dropdown a {
+    display: block;
+    padding: 8px 16px;
+    color: #333;
+    text-decoration: none;
+    transition: background-color 0.2s;
+}
+
+.profile-dropdown a:hover {
+    background-color: #f5f5f5;
+}
+
+/* Back button styling */
+.back-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background-color: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    color: #333;
+    transition: all 0.2s ease;
+    margin: 10px;
+    width: auto;
+    min-width: 100px;
+}
+
+.back-button:hover {
+    background-color: #e0e0e0;
+    transform: translateX(-2px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.back-button:active {
+    transform: translateX(0);
+    box-shadow: none;
+}
+
+.back-icon {
+    font-size: 18px;
 }

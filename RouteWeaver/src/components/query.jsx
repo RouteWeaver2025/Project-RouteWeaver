@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import '../design/query.css';
 import { useNavigate } from 'react-router-dom';
+import { FaUserCircle } from 'react-icons/fa';
 
 function Questions() {
   const navigate = useNavigate();
@@ -11,6 +12,17 @@ function Questions() {
   const [selectedKeywords, setSelectedKeywords] = useState([]);
   const [suggestions, setSuggestions] = useState([]); // Suggestions for autocomplete
   const [activeField, setActiveField] = useState(null); // "destination" or "location"
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+
+  // Handle sign out functionality
+  const handleSignOut = () => {
+    // Remove user data from localStorage and sessionStorage
+    localStorage.removeItem('userEmail');
+    sessionStorage.clear();
+    // Navigate to login page
+    navigate('/');
+  };
 
   // Check if user is logged in
   useEffect(() => {
@@ -20,6 +32,14 @@ function Questions() {
       navigate("/");
     }
   }, [navigate]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Extended keywords list
   const keywords = [
@@ -126,15 +146,33 @@ function Questions() {
 
   return (
     <>
-      <button id="name" onClick={() => navigate("/home")}>
-        RouteWeaver
-      </button>
+      <nav className={`navbar ${isScrolled ? 'scrolled' : ''}`}>
+        <div>
+          <button id="name" onClick={() => navigate('/home')}>RouteWeaver</button>
+        </div>
+        <div className="nav-links">
+          <a href="/home"><h4>Home</h4></a>
+          <FaUserCircle
+            size={24}
+            className="profile-icon"
+            onClick={() => setShowProfileMenu(!showProfileMenu)}
+          />
+          {showProfileMenu && (
+            <div className="profile-dropdown">
+              <a href="#profile">My Profile</a>
+              <a href="#settings">Settings</a>
+              <a href="#switch">Switch Account</a>
+              <a href="#signout" onClick={handleSignOut}>Sign Out</a>
+            </div>
+          )}
+        </div>
+      </nav>
       <div className="main">
         {currentStep === 0 && (
           <div>
             <div className="options">
               <button id="custom" onClick={handleNext}>Custom</button>
-              <button id="pkg">Travel Package</button>
+              <button id="pkg" onClick={() => navigate("/packages")}>Travel Package</button>
             </div>
             <div className="move">
               <button id="back" onClick={handleBack}></button>
@@ -165,17 +203,6 @@ function Questions() {
                   </li>
                 ))}
               </ul>
-                // <div className="location-suggestions">
-                //   {suggestions.map((sugg) => (
-                //     <div
-                //       key={sugg.place_id}
-                //       className="location-suggestion-item"
-                //       onClick={() => handleSuggestionClick(sugg, "destination")}
-                //     >
-                //       {sugg.display_name}
-                //     </div>
-                //   ))}
-                // </div>
               )}
             </div>
             <div className="move">

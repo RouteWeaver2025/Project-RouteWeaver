@@ -5,6 +5,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "../design/summary.css";
 import { FiRefreshCw } from 'react-icons/fi';
+import { FaUserCircle, FaArrowLeft } from 'react-icons/fa';
 import axios from 'axios';
 
 // Icons for markers
@@ -124,6 +125,9 @@ export default function Summary() {
   const [showNavOptions, setShowNavOptions] = useState(false);
   const [hoveredPlace, setHoveredPlace] = useState(null);
   const [isVacayRoute, setIsVacayRoute] = useState(false);
+  const [isPackageRoute, setIsPackageRoute] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   
   // Authentication check
   useEffect(() => {
@@ -144,10 +148,12 @@ export default function Summary() {
   // Fetch route data based on routeId
   useEffect(() => {
     async function fetchRouteData() {
-      setLoading(true);
       try {
-        const email = localStorage.getItem('email');
-        if (!email) {
+        setError("");
+        setLoading(true);
+        
+        const userEmail = localStorage.getItem('userEmail');
+        if (!userEmail) {
           setError("You need to be logged in to view route details");
           setLoading(false);
           return;
@@ -157,115 +163,120 @@ export default function Summary() {
         if (routeId === 'vacay') {
           setIsVacayRoute(true);
           await handleVacayRoute();
-          return;
+        } 
+        // Check if this is a Travel Package route
+        else if (routeId === 'packages') {
+          setIsPackageRoute(true);
+          await handlePackageRoute();
         }
-        
-        console.log(`Fetching route ID: ${routeId} for user: ${email}`);
-        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        
-        // Using try-catch here to handle potential axios failures
-        try {
-          const response = await axios.get(`${baseUrl}/saved/${email}/${routeId}`);
-          const data = response.data;
-          console.log("Route data:", data);
+        else {
+          console.log(`Fetching route ID: ${routeId} for user: ${userEmail}`);
+          const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
           
-          // Debug the places structure
-          if (data.places && data.places.length > 0) {
-            console.log("First place structure:", data.places[0]);
-          }
-          
-          // Set route data - ensure we have the necessary fields
-          setRouteData(data);
-          setOrigin(data.origin || "");
-          setDestination(data.destination || "");
-          
-          // Ensure we have a places array, even if empty
-          const placesData = data.places || [];
-          
-          // Mark all places as checked by default and ensure they have lat/lng properties
-          const placesWithChecked = placesData.map(place => {
-            // Check if place already has lat/lng or needs conversion from latitude/longitude
-            const placeWithCoords = {
-              ...place,
-              checked: true,
-              // Ensure we have both formats available to handle different API requirements
-              lat: place.lat || place.latitude,
-              lng: place.lng || place.longitude,
-              latitude: place.latitude || place.lat,
-              longitude: place.longitude || place.lng
-            };
-            return placeWithCoords;
-          });
-          
-          console.log("Places with coords:", placesWithChecked);
-          setPlaces(placesWithChecked);
-          
-          // Get coordinates for origin and destination - this should always happen
-          await getCoordinatesFromAddresses(data.origin, data.destination);
-          
-          // If places have missing coordinates, look them up
-          if (placesWithChecked.length > 0) {
-            const updatedPlaces = await Promise.all(placesWithChecked.map(async (place, index) => {
-              if (!place.longitude || !place.lng) {
-                // If we have a place name, try to get coordinates from it
-                if (place.name) {
-                  try {
-                    // Add the destination to make the search more specific to that region
-                    const searchQuery = `${place.name} near ${data.destination}`;
-                    console.log(`Looking up coordinates for place: ${searchQuery}`);
-                    
-                    const placeResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`);
-                    const placeData = await placeResponse.json();
-                    
-                    if (placeData && placeData.length > 0) {
-                      console.log(`Found coordinates for ${place.name}:`, placeData[0]);
+          // Using try-catch here to handle potential axios failures
+          try {
+            const response = await axios.get(`${baseUrl}/saved/${userEmail}/${routeId}`);
+            const data = response.data;
+            console.log("Route data:", data);
+            
+            // Debug the places structure
+            if (data.places && data.places.length > 0) {
+              console.log("First place structure:", data.places[0]);
+            }
+            
+            // Set route data - ensure we have the necessary fields
+            setRouteData(data);
+            setOrigin(data.origin || "");
+            setDestination(data.destination || "");
+            
+            // Ensure we have a places array, even if empty
+            const placesData = data.places || [];
+            
+            // Mark all places as checked by default and ensure they have lat/lng properties
+            const placesWithChecked = placesData.map(place => {
+              // Check if place already has lat/lng or needs conversion from latitude/longitude
+              const placeWithCoords = {
+                ...place,
+                checked: true,
+                // Ensure we have both formats available to handle different API requirements
+                lat: place.lat || place.latitude,
+                lng: place.lng || place.longitude,
+                latitude: place.latitude || place.lat,
+                longitude: place.longitude || place.lng
+              };
+              return placeWithCoords;
+            });
+            
+            console.log("Places with coords:", placesWithChecked);
+            setPlaces(placesWithChecked);
+            
+            // Get coordinates for origin and destination - this should always happen
+            await getCoordinatesFromAddresses(data.origin, data.destination);
+            
+            // If places have missing coordinates, look them up
+            if (placesWithChecked.length > 0) {
+              const updatedPlaces = await Promise.all(placesWithChecked.map(async (place, index) => {
+                if (!place.longitude || !place.lng) {
+                  // If we have a place name, try to get coordinates from it
+                  if (place.name) {
+                    try {
+                      // Add the destination to make the search more specific to that region
+                      const searchQuery = `${place.name} near ${data.destination}`;
+                      console.log(`Looking up coordinates for place: ${searchQuery}`);
                       
-                      // Update the place with the looked-up coordinates
-                      return {
-                        ...place,
-                        lat: parseFloat(placeData[0].lat),
-                        lng: parseFloat(placeData[0].lon),
-                        latitude: parseFloat(placeData[0].lat),
-                        longitude: parseFloat(placeData[0].lon)
-                      };
-                    } else {
-                      console.warn(`No coordinates found for ${place.name}, using fallback near destination`);
+                      const placeResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`);
+                      const placeData = await placeResponse.json();
                       
-                      // Use fallback coordinates
+                      if (placeData && placeData.length > 0) {
+                        console.log(`Found coordinates for ${place.name}:`, placeData[0]);
+                        
+                        // Update the place with the looked-up coordinates
+                        return {
+                          ...place,
+                          lat: parseFloat(placeData[0].lat),
+                          lng: parseFloat(placeData[0].lon),
+                          latitude: parseFloat(placeData[0].lat),
+                          longitude: parseFloat(placeData[0].lon)
+                        };
+                      } else {
+                        console.warn(`No coordinates found for ${place.name}, using fallback near destination`);
+                        
+                        // Use fallback coordinates
+                        return createFallbackPlaceCoordinates(place, index, data.destination);
+                      }
+                    } catch (error) {
+                      console.error(`Error looking up coordinates for ${place.name}:`, error);
                       return createFallbackPlaceCoordinates(place, index, data.destination);
                     }
-                  } catch (error) {
-                    console.error(`Error looking up coordinates for ${place.name}:`, error);
+                  } else {
                     return createFallbackPlaceCoordinates(place, index, data.destination);
                   }
-                } else {
-                  return createFallbackPlaceCoordinates(place, index, data.destination);
                 }
+                return place;
+              }));
+              
+              console.log("Updated places with looked-up coordinates:", updatedPlaces);
+              setPlaces(updatedPlaces);
+              
+              // Generate route geometry with the updated places
+              await fetchRouteGeometry(data.origin, data.destination, updatedPlaces);
+            } else {
+              // Even if no places, still create a direct route
+              await fetchRouteGeometry(data.origin, data.destination, []);
+            }
+          } catch (error) {
+            console.error("Error fetching route data:", error);
+            setError(`Failed to load route: ${error.message}`);
+            
+            // Still try to get basic origin/destination data from URL params or other sources if possible
+            if (!origin && !destination && routeId) {
+              // Try to parse routeId for origin/destination if it contains this information
+              const parts = routeId.split('_');
+              if (parts.length >= 2) {
+                setOrigin(parts[0] || "Unknown Origin");
+                setDestination(parts[1] || "Unknown Destination");
+                await getCoordinatesFromAddresses(parts[0], parts[1]);
               }
-              return place;
-            }));
-            
-            console.log("Updated places with looked-up coordinates:", updatedPlaces);
-            setPlaces(updatedPlaces);
-            
-            // Generate route geometry with the updated places
-            await fetchRouteGeometry(data.origin, data.destination, updatedPlaces);
-          } else {
-            // Even if no places, still create a direct route
-            await fetchRouteGeometry(data.origin, data.destination, []);
-          }
-        } catch (error) {
-          console.error("Error fetching route data:", error);
-          setError(`Failed to load route: ${error.message}`);
-          
-          // Still try to get basic origin/destination data from URL params or other sources if possible
-          if (!origin && !destination && routeId) {
-            // Try to parse routeId for origin/destination if it contains this information
-            const parts = routeId.split('_');
-            if (parts.length >= 2) {
-              setOrigin(parts[0] || "Unknown Origin");
-              setDestination(parts[1] || "Unknown Destination");
-              await getCoordinatesFromAddresses(parts[0], parts[1]);
             }
           }
         }
@@ -525,8 +536,110 @@ export default function Summary() {
       setError("Failed to load vacation route details.");
       setLoading(false);
       
-      // Always create a fallback route if there's an error
       createFallbackRoute();
+    }
+  }
+  
+  // Handle Travel Package route data
+  async function handlePackageRoute() {
+    try {
+      // Get package trip data from sessionStorage
+      const packageTripJSON = sessionStorage.getItem('packageTrip');
+      if (!packageTripJSON) {
+        console.error("No package trip data found in sessionStorage");
+        setError("Package trip data not found. Please try selecting a destination again.");
+        setLoading(false);
+        return;
+      }
+      
+      const packageTrip = JSON.parse(packageTripJSON);
+      console.log("Package trip data:", packageTrip);
+      
+      // Validate destination
+      if (!packageTrip.destination) {
+        console.error("No destination found in package trip data");
+        setError("No destination found in package data");
+        setLoading(false);
+        return;
+      }
+      
+      // Set origin and destination fields
+      setOrigin(packageTrip.origin || "");
+      setDestination(packageTrip.destination || "");
+      
+      // Set route summary info (estimate)
+      setRoute({
+        time: (packageTrip.distance * 60 * 60) / 50, // rough estimate: distance / 50 km/h * 3600 seconds
+        distance: packageTrip.distance * 1000, // convert km to meters
+      });
+      
+      // Check if we have coordinates for both origin and destination
+      if (packageTrip.originCoords && packageTrip.destinationCoords) {
+        console.log("Using coordinates from package data:", packageTrip.originCoords, packageTrip.destinationCoords);
+        setOriginCoords(packageTrip.originCoords);
+        setDestCoords(packageTrip.destinationCoords);
+        
+        // Fetch route using OSRM
+        const osrmOrigin = { lat: packageTrip.originCoords.lat, lng: packageTrip.originCoords.lng };
+        const osrmDest = { lat: packageTrip.destinationCoords.lat, lng: packageTrip.destinationCoords.lng };
+        
+        try {
+          const routeData = await fetchRouteGeometry(osrmOrigin, osrmDest, []);
+          if (routeData) {
+            setRouteGeometry(routeData.geometry);
+            setRoute({
+              geometry: routeData.geometry,
+              time: routeData.time,
+              distance: routeData.distance
+            });
+            
+            // Fetch tourist attractions for destination
+            try {
+              await fetchTopTouristAttractions(packageTrip.destination);
+            } catch (attractionError) {
+              console.error("Error fetching tourist attractions:", attractionError);
+              // This is non-fatal, so we continue
+            }
+          }
+        } catch (routeError) {
+          console.error("Could not fetch route using coordinates:", routeError);
+          // Try fallback method with straight line route
+          createFallbackRoute();
+          
+          // Still try to fetch tourist attractions
+          try {
+            await fetchTopTouristAttractions(packageTrip.destination);
+          } catch (attractionError) {
+            console.error("Error fetching tourist attractions:", attractionError);
+          }
+        }
+      } else {
+        // If we don't have coordinates, use addresses to geocode
+        console.log("No coordinates found in package data, geocoding addresses...");
+        try {
+          const result = await getCoordinatesFromAddressesAndWait(packageTrip.origin, packageTrip.destination);
+          if (!result) {
+            throw new Error("Failed to geocode addresses");
+          }
+          
+          // Try to fetch tourist attractions
+          try {
+            await fetchTopTouristAttractions(packageTrip.destination);
+          } catch (attractionError) {
+            console.error("Error fetching tourist attractions:", attractionError);
+          }
+        } catch (geocodeError) {
+          console.error("Error geocoding addresses:", geocodeError);
+          setError("Could not find coordinates for the entered locations. Please try again with more specific addresses.");
+          // Create a fallback route if possible
+          createFallbackRoute();
+        }
+      }
+    } catch (error) {
+      console.error("Error handling package route:", error);
+      setError("Error processing package data: " + error.message);
+    } finally {
+      setLoading(false);
     }
   }
   
@@ -1421,10 +1534,6 @@ export default function Summary() {
           
           break;
           
-        case 'waze':
-          // Waze only supports navigating to one destination
-          navUrl = `https://waze.com/ul?ll=${destCoords.lat},${destCoords.lng}&navigate=yes`;
-          break;
           
         case 'apple':
           // Apple Maps URL format
@@ -1447,13 +1556,9 @@ export default function Summary() {
     setShowNavOptions(false);
   };
   
-  // Return to saved routes list or home
+  // Return to saved routes list
   const handleBack = () => {
-    if (isVacayRoute) {
-      navigate("/home");
-    } else {
-      navigate("/saver");
-    }
+    navigate("/saver");
   };
   
   const submitCheckedPlaces = async () => {
@@ -1471,19 +1576,24 @@ export default function Summary() {
         
         const vacayTrip = JSON.parse(vacayTripJSON);
         
-        // Create a new route entry
+        // Create a new route entry - use the format expected by addRoute in saveroute.js
         const newRouteData = {
-          email: localStorage.getItem('email'),
+          email: localStorage.getItem('userEmail'),
+          id: "x", // Special marker for new routes that triggers proper ID generation
           origin: origin,
           destination: destination,
-          places: checkedPlaces,
+          selectedPlaces: checkedPlaces.map(place => ({
+            lat: place.lat,
+            lng: place.lng || place.lon, // Handle different property naming
+            name: place.name
+          })),
           startDate: vacayTrip.startDate,
           endDate: vacayTrip.endDate
         };
         
         // Save as a new route
         const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        const response = await fetch(`${baseUrl}/saved/add`, {
+        const response = await fetch(`${baseUrl}/saved/save`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -1492,7 +1602,9 @@ export default function Summary() {
         });
         
         if (!response.ok) {
-          throw new Error('Failed to save route');
+          const errorData = await response.text();
+          console.error("Error response from server:", errorData);
+          throw new Error(`Failed to save route: ${errorData}`);
         }
         
         const data = await response.json();
@@ -1506,11 +1618,15 @@ export default function Summary() {
       // For regular saved routes, update the existing route
       // Construct the route data to update
       const updatedRouteData = {
-        email: localStorage.getItem('email'),
+        email: localStorage.getItem('userEmail'),
         routeId: routeId,
         origin: origin,
         destination: destination,
-        places: checkedPlaces
+        selectedPlaces: checkedPlaces.map(place => ({
+          lat: place.lat,
+          lng: place.lng || place.lon, // Handle different property naming
+          name: place.name
+        }))
       };
       
       // Call the API to update the route
@@ -1524,7 +1640,9 @@ export default function Summary() {
       });
       
       if (!response.ok) {
-        throw new Error('Failed to update route');
+        const errorData = await response.text();
+        console.error("Error response from server:", errorData);
+        throw new Error(`Failed to update route: ${errorData}`);
       }
       
       const data = await response.json();
@@ -1540,7 +1658,8 @@ export default function Summary() {
       
     } catch (error) {
       console.error('Error updating route:', error);
-      setError('Failed to update the route. Please try again.');
+      setError(`Failed to update the route: ${error.message}`);
+      alert(`Error: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -1578,235 +1697,70 @@ export default function Summary() {
     });
   }, []);
 
+  // Handle sign out functionality
+  const handleSignOut = () => {
+    // Remove user data from localStorage and sessionStorage
+    localStorage.removeItem('userEmail');
+    sessionStorage.clear();
+    // Navigate to login page
+    navigate('/');
+  };
+  
+  // Add scroll effect for navbar
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
     <div className="summary-container">
       <div className="top-bar">
-        <button id="name" onClick={() => navigate("/home")}>RouteWeaver</button>
-        <button className="reload-button" onClick={handleBack} aria-label="Back to saved routes">
-          <FiRefreshCw size={20} />
-              </button>
+        <div className="nav-links">
+          <a href="/home"><h4>Home</h4></a>
+          <FaUserCircle
+            size={24}
+            className="profile-icon"
+            onClick={() => setShowProfileMenu(!showProfileMenu)}
+          />
+          {showProfileMenu && (
+            <div className="profile-dropdown">
+              <a href="#profile">My Profile</a>
+              <a href="#settings">Settings</a>
+              <a href="#switch">Switch Account</a>
+              <a href="#signout" onClick={handleSignOut}>Sign Out</a>
             </div>
-      
-      <div className="content-container">
-        {loading ? (
-          <>
-            <div className="sidebar">
-              <div className="route-header">
-                <h3>Route Summary</h3>
-              </div>
-              <div className="loading-message">
-                <p>Loading route data...</p>
-              </div>
-            </div>
-            <div className="map-area">
-              {/* Fallback map while loading */}
-              <MapContainer
-                center={[20.5937, 78.9629]} // India center
-                zoom={4}
-                style={{ height: "100%", width: "100%" }}
-              >
-                <TileLayer
-                  attribution='&copy; OpenStreetMap contributors'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-              </MapContainer>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="sidebar">
-              <div className="route-header">
-                <h3>Route Summary</h3>
-              </div>
-              
-              {/* Always show route info section, even if there's an error */}
-              <div className="route-info">
-                <div className="origin-dest-item start-point">
-                  <span>From: {origin || "Unknown Origin"}</span>
-                </div>
-                <div className="origin-dest-item end-point">
-                  <span>To: {destination || "Unknown Destination"}</span>
-                </div>
-                {route && (
-                  <div className="route-details">
-                    <span>Time: {route.time ? (route.time / 60).toFixed(1) + ' min' : 'Calculating...'}</span>
-                    <span>Distance: {route.distance ? (route.distance / 1000).toFixed(1) + ' km' : 'Calculating...'}</span>
-                  </div>
         )}
       </div>
-              
-              {/* Show error message if any */}
-              {error && (
-                <div className="error-message">
-                  <p>{isVacayRoute && error.includes("Failed to fetch tourist attractions") 
-                     ? "Failed to fetch tourist attractions. Using direct route." 
-                     : error}</p>
-                </div>
-              )}
-              
-              {/* Places section */}
-              <div className="places-header">
-                <h4>Places to Visit</h4>
-                <span>{places.filter(place => place.checked).length}/{places.length} selected</span>
-              </div>
-              
-              <div className="place-list">
-                {places.length === 0 ? (
-                  <p>{isVacayRoute 
-                     ? "No tourist attractions found. Try saving a direct route between these locations."
-                     : "No waypoints for this route."}</p>
-                ) : (
-                  <>
-                    <div className="origin-dest-item">
-                      <span className="start-point">Start: {origin || "Unknown Origin"}</span>
-                    </div>
-                    
-                    {places.map((place, index) => (
-                      <div
-                        key={index}
-                        className="place-item"
-                        onMouseEnter={() => setHoveredPlace(place)}
-                        onMouseLeave={() => setHoveredPlace(null)}
-                      >
-                        <div className="place-name">{place.name || `Waypoint ${index + 1}`}</div>
-                        <input
-                          type="checkbox"
-                          checked={place.checked}
-                          onChange={() => togglePlace(index)}
-                        />
-                      </div>
-                    ))}
-                    
-                    <div className="origin-dest-item">
-                      <span className="end-point">End: {destination || "Unknown Destination"}</span>
-                    </div>
-                  </>
-                )}
-              </div>
-              
-              {/* Always show action buttons */}
-      <div className="bottom-buttons">
-                <button id="navigate-btn" onClick={handleNavigateClick}>Navigate</button>
-                <button id="submit-btn" onClick={submitCheckedPlaces}>
-                  {isVacayRoute ? "Save Route" : "Submit"}
-                </button>
-              </div>
-
-              {showNavOptions && (
-                <div className="nav-options">
-                  <button onClick={() => handleNavOptionSelect('google')}>Google Maps</button>
-                  <button onClick={() => handleNavOptionSelect('waze')}>Waze</button>
-                  <button onClick={() => handleNavOptionSelect('apple')}>Apple Maps</button>
-                </div>
-              )}
-            </div>
-            
-            <div className="map-area">
-              {/* Always show the map */}
-              <MapContainer
-                center={originCoords ? [originCoords.lat, originCoords.lng] : [20.5937, 78.9629]}
-                zoom={5}
-                style={{ width: "100%", height: "100%" }}
-              >
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                
-                {/* Route polyline */}
-                {route && route.geometry && <RoutePolylines routeGeometry={route.geometry} />}
-                
-                {/* Origin and destination markers */}
-                {originCoords && (
-                  <Marker 
-                    position={[originCoords.lat, originCoords.lng]} 
-                    icon={new L.Icon({
-                      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-                      // Remove shadowUrl to prevent content security policy issues
-                      iconSize: [25, 41],
-                      iconAnchor: [12, 41],
-                      popupAnchor: [1, -34]
-                    })}
-                  >
-                    <Popup>
-                      <strong>From:</strong> {origin}
-                    </Popup>
-                  </Marker>
-                )}
-                
-                {destCoords && (
-                  <Marker 
-                    position={[destCoords.lat, destCoords.lng]} 
-                    icon={new L.Icon({
-                      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-                      // Remove shadowUrl to prevent content security policy issues
-                      iconSize: [25, 41],
-                      iconAnchor: [12, 41],
-                      popupAnchor: [1, -34]
-                    })}
-                  >
-                    <Popup>
-                      <strong>To:</strong> {destination}
-                    </Popup>
-                  </Marker>
-                )}
-                
-                {/* Place markers */}
-                {places.map((place, index) => (
-                  <Marker
-                    key={`place-${place.id || index}`}
-                    position={[
-                      parseFloat(place.lat || place.location?.lat || 0), 
-                      parseFloat(place.lon || place.location?.lng || place.lng || 0)
-                    ]}
-                    icon={place.checked ? selectedPlaceIcon : 
-                          (place.isFallback ? fallbackPlaceIcon : regularPlaceIcon)}
-                  >
-                    <Popup>
-                      <div className="place-popup">
-                        <h3>{place.name}</h3>
-                        {place.vicinity && <p>{place.vicinity}</p>}
-                        {place.rating && <p><strong>Rating:</strong> {place.rating} ⭐</p>}
-                        <button 
-                          className={`place-toggle-btn ${place.checked ? 'selected' : ''}`}
-                          onClick={() => togglePlace(index)}
-                        >
-                          {place.checked ? 'Remove from route' : 'Add to route'}
-                        </button>
-                      </div>
-                    </Popup>
-                  </Marker>
-                ))}
-                
-                {/* Draw fallback line if no route but we have origin/destination markers */}
-                {(!route?.geometry || route.geometry.length < 2) && originCoords && destCoords && (
-                  <Polyline
-                    positions={[
-                      [originCoords.lat, originCoords.lng],
-                      [destCoords.lat, destCoords.lng]
-                    ]}
-                    pathOptions={{
-                      color: "#FF5733",
-                      weight: 4,
-                      opacity: 0.7,
-                      dashArray: "10, 10",
-                      dashOffset: "0"
-                    }}
-                  />
-                )}
-              </MapContainer>
-              
-              {/* Hover box for place details */}
-              {hoveredPlace && (
-                <div className="hoverbox">
-                  <div className="hoverbox-info">
-                    <p className="hoverbox-name">{hoveredPlace.name || "Waypoint"}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </>
-        )}
+      </div>
+      
+      <div className="content-container">
+        <div className="sidebar">
+          <button className="back-button" onClick={handleBack}>
+            <FaArrowLeft className="back-icon" /> Back
+          </button>
+          <div className="route-header">
+            <h3>Route Summary</h3>
+          </div>
+          <div className="loading-message">
+            <p>Loading route data...</p>
+          </div>
+        </div>
+        <div className="map-area">
+          {/* Fallback map while loading */}
+          <MapContainer
+            center={[20.5937, 78.9629]} // India center
+            zoom={4}
+            style={{ height: "100%", width: "100%" }}
+          >
+            <TileLayer
+              attribution='&copy; OpenStreetMap contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+          </MapContainer>
+        </div>
       </div>
     </div>
   );

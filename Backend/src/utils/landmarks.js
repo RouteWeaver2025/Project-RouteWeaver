@@ -339,7 +339,7 @@ const rateLimiter = {
 // Places endpoint to fetch nearby places
 router.get('/places', async (req, res) => {
   try {
-    const { lat, lng, keywords = '' } = req.query;
+    const { lat, lng, keywords = '', offset = '0' } = req.query;
     
     // Input validation
     if (!lat || !lng) {
@@ -391,11 +391,18 @@ router.get('/places', async (req, res) => {
       'amusement_park'
     ];
     
+    // Parse offset to ensure it's a number
+    const offsetValue = parseInt(offset) || 0;
+    
+    // Rotate the place types based on the offset to get different results each time
+    // This ensures that different API calls are made when the reload button is pressed
+    const rotatedTypes = [...placeTypes.slice(offsetValue % placeTypes.length), ...placeTypes.slice(0, offsetValue % placeTypes.length)];
+    
     // We'll make multiple requests with different types to get diverse results
     // but limit to 2 requests to keep API usage reasonable
     const typeBatches = [
-      placeTypes.slice(0, 5).join('|'),  // Tourist attractions and natural features
-      placeTypes.slice(5, 10).join('|')  // Cultural and historical sites
+      rotatedTypes.slice(0, 5).join('|'),  // Tourist attractions and natural features
+      rotatedTypes.slice(5, 10).join('|')  // Cultural and historical sites
     ];
     
     const allResults = [];
@@ -413,7 +420,9 @@ router.get('/places', async (req, res) => {
         radius: 10000, // Increase radius to 10km to get more places
         key: GOOGLE_MAPS_API_KEY,
         ...(keywordArray.length && { keyword: keywordArray.join('|') }),
-        type: typeBatches[i]
+        type: typeBatches[i],
+        // Add randomization parameter based on the offset
+        rankby: offsetValue % 2 === 0 ? 'prominence' : 'distance'
       });
 
       console.log(`Fetching places near [${latitude}, ${longitude}] (batch ${i+1}/${typeBatches.length})`);
@@ -450,21 +459,38 @@ router.get('/places', async (req, res) => {
       );
     });
     
-    // Sort with a balance of prominence and distance
+    // Use the offset to vary the sorting algorithm
+    const sortRandomFactor = (offsetValue % 10) / 10; // Generate a value between 0 and 0.9
+    
+    // Sort with a balance of prominence and distance, varied by the offset
     results.sort((a, b) => {
-      // First prioritize by prominence
+      // First prioritize by prominence, with randomization based on offset
       if (a.rating && b.rating) {
         const ratingDiff = b.rating - a.rating;
-        // If ratings are significantly different, use rating
-        if (Math.abs(ratingDiff) >= 0.5) return ratingDiff;
+        // If ratings are significantly different, use rating with a random factor
+        if (Math.abs(ratingDiff) >= 0.5) {
+          return ratingDiff + ((Math.random() * 2 - 1) * sortRandomFactor);
+        }
       }
       
-      // For similar ratings or no ratings, use distance
-      return a.distance - b.distance;
+      // For similar ratings or no ratings, use distance with a random factor
+      return (a.distance - b.distance) * (1 + ((Math.random() * 2 - 1) * sortRandomFactor));
     });
     
+    // Rotate the results based on the offset to provide different places each time
+    const rotationIndex = offsetValue % Math.max(5, Math.min(10, results.length / 2));
+    let processedResults = [...results];
+    
+    if (results.length > 10) {
+      // If we have more than 10 results, use the offset to select a different subset
+      processedResults = [
+        ...results.slice(rotationIndex),
+        ...results.slice(0, rotationIndex)
+      ];
+    }
+    
     // Limit to a reasonable number
-    const limitedResults = results.slice(0, 15);
+    const limitedResults = processedResults.slice(0, 15);
     
     console.log(`Found ${results.length} places near [${latitude}, ${longitude}], returning top ${limitedResults.length}`);
     res.json({ results: limitedResults });

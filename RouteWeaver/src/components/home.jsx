@@ -23,6 +23,15 @@ const HomePage = () => {
   const [greeting, setGreeting] = useState('');
   const [username, setUsername] = useState('');
 
+  // Handle sign out functionality
+  const handleSignOut = () => {
+    // Remove user data from localStorage and sessionStorage
+    localStorage.removeItem('userEmail');
+    sessionStorage.clear();
+    // Navigate to login page
+    navigate('/');
+  };
+
   // Retrieve start location from session storage
   const [startLocation, setStartLocation] = useState(sessionStorage.getItem("location"));
 
@@ -292,7 +301,7 @@ const HomePage = () => {
               <a href="#profile">My Profile</a>
               <a href="#settings">Settings</a>
               <a href="#switch">Switch Account</a>
-              <a href="#signout">Sign Out</a>
+              <a href="#signout" onClick={handleSignOut}>Sign Out</a>
             </div>
           )}
         </div>

@@ -160,9 +160,9 @@ body {
 }
 
 .search-box {
-  flex: 1;
   position: relative;
-  
+  flex: 1;
+  display: flex;
 }
 
 .search-input {
@@ -317,4 +317,74 @@ body {
     flex-direction: column;
     text-align: center;
   }
+}
+
+/* Add styles for search button and error message */
+.search-button {
+  background-color: #da9e48;
+  color: white;
+  border: none;
+  border-radius: 0 4px 4px 0;
+  padding: 0 15px;
+  cursor: pointer;
+  height: 100%;
+  transition: background-color 0.3s;
+}
+
+.search-button:hover {
+  background-color: #c58c3a;
+}
+
+.error-message {
+  color: #e74c3c;
+  text-align: center;
+  padding: 15px;
+  margin: 10px auto;
+  max-width: 600px;
+  background-color: rgba(231, 76, 60, 0.1);
+  border-radius: 4px;
+}
+
+.loading-container {
+  text-align: center;
+  padding: 40px;
+  color: #555;
+}
+
+.no-places-message {
+  width: 100%;
+  text-align: center;
+  padding: 20px;
+  color: #777;
+  grid-column: span 3;
+}
+
+/* Location suggestions dropdown */
+.location-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: #1f1f1f;
+  border: 1px solid #444;
+  border-top: none;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 100;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  border-radius: 0 0 4px 4px;
+}
+
+.location-suggestion-item {
+  padding: 10px 15px;
+  cursor: pointer;
+  color: #ddd;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.location-suggestion-item:hover {
+  background-color: #333;
 }

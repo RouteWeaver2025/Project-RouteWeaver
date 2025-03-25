@@ -5,6 +5,7 @@ import { router } from './src/routes/login.js';
 import { saver } from './src/routes/savedroutes.js';
 import creationRouter from './src/routes/creation.js';
 import {homr} from './src/routes/home.js';
+import travelRouter from './src/routes/@traveloptions.js';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -18,6 +19,7 @@ app.use("/user",router); //handles all routes starting with /user
 app.use("/saved",saver); //handles all routes starting with /saved
 app.use('/api', creationRouter);
 app.use("/home",homr);
+app.use('/travel', travelRouter); // handles all routes starting with /travel
 app.listen(PORT, () => {
   console.log(`Backend server running on http://localhost:${PORT}`);
 });

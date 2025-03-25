@@ -1,13 +1,44 @@
-import React, { useState, useEffect } from "react";
-import { FaBold, FaUserCircle } from 'react-icons/fa';
+import React, { useState, useEffect, useRef } from "react";
+import { FaUserCircle } from 'react-icons/fa';
 import { IoLocationSharp } from 'react-icons/io5';
+import axios from 'axios';
 import '../design/travelpackage.css';
 import { useNavigate } from 'react-router-dom';
+
+import fallbackImage from '../assets/homeimg.jpg';
 
 const TravelPackage = () => {
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [nearbyPlaces, setNearbyPlaces] = useState([]);
+  const [distantPlaces, setDistantPlaces] = useState([]);
+  const [userCoords, setUserCoords] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const locationTimeoutRef = useRef(null);
+  const searchInputRef = useRef(null);
+
+  // Handle sign out functionality
+  const handleSignOut = () => {
+    // Remove user data from localStorage and sessionStorage
+    localStorage.removeItem('userEmail');
+    sessionStorage.clear();
+    // Navigate to login page
+    navigate('/');
+  };
+
+  // Check if user is logged in
+  useEffect(() => {
+    const userEmail = localStorage.getItem("userEmail");
+    if (!userEmail) {
+      console.log("User not logged in, redirecting to login page");
+      navigate("/");
+    }
+  }, [navigate]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -17,13 +48,257 @@ const TravelPackage = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleLocationClick = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((position) => {
-        console.log(position.coords.latitude, position.coords.longitude);
-        // Here you would typically use these coordinates to update the search
-      });
+  // When clicking on search input, show suggestions if we have any
+  const handleSearchInputFocus = () => {
+    if (suggestions.length > 0) {
+      setShowSuggestions(true);
     }
+  };
+
+  // Handle location input changes with OSRM autocomplete
+  useEffect(() => {
+    // Clear previous timeout to avoid multiple API calls
+    if (locationTimeoutRef.current) {
+      clearTimeout(locationTimeoutRef.current);
+    }
+
+    // Only make API call if there's something to search for
+    if (searchQuery.length > 2) {
+      locationTimeoutRef.current = setTimeout(async () => {
+        try {
+          const response = await axios.get(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=5`
+          );
+          setSuggestions(response.data);
+          setShowSuggestions(true);
+        } catch (error) {
+          console.error('Error fetching location suggestions:', error);
+        }
+      }, 500);
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+
+    return () => {
+      if (locationTimeoutRef.current) {
+        clearTimeout(locationTimeoutRef.current);
+      }
+    };
+  }, [searchQuery]);
+
+  // Get user location from storage or geolocation
+  useEffect(() => {
+    const getUserCoordinates = async () => {
+      setLoading(true);
+      try {
+        // First try to get location from session storage
+        const storedLocation = sessionStorage.getItem("location");
+        
+        if (storedLocation) {
+          // Convert stored location (which is likely an address) to coordinates
+          const response = await axios.get(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(storedLocation)}&limit=1`
+          );
+          
+          if (response.data && response.data.length > 0) {
+            const coords = {
+              lat: parseFloat(response.data[0].lat),
+              lng: parseFloat(response.data[0].lon)
+            };
+            setUserCoords(coords);
+            setSearchQuery(storedLocation); // Set the search query to show the current location
+            fetchPlaces(coords);
+          } else {
+            throw new Error("Could not geocode stored location");
+          }
+        } else {
+          // If no stored location, try browser geolocation
+    if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+              async (position) => {
+                const coords = {
+                  lat: position.coords.latitude,
+                  lng: position.coords.longitude
+                };
+                setUserCoords(coords);
+                
+                // Reverse geocode to get location name
+                try {
+                  const response = await axios.get(
+                    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}&zoom=10`
+                  );
+                  if (response.data && response.data.display_name) {
+                    setSearchQuery(response.data.display_name);
+                    sessionStorage.setItem("location", response.data.display_name);
+                  }
+                } catch (err) {
+                  console.error("Error reverse geocoding:", err);
+                }
+                
+                fetchPlaces(coords);
+              },
+              (err) => {
+                console.error("Geolocation error:", err);
+                setError("Unable to get your location. Please enter a location in the search box.");
+                setLoading(false);
+              }
+            );
+          } else {
+            setError("Geolocation is not supported by your browser. Please enter a location in the search box.");
+            setLoading(false);
+          }
+        }
+      } catch (err) {
+        console.error("Error getting user coordinates:", err);
+        setError("Error determining your location. Please try again.");
+        setLoading(false);
+      }
+    };
+
+    getUserCoordinates();
+  }, []);
+
+  // Fetch places from backend with the coordinates
+  const fetchPlaces = async (coords) => {
+    try {
+      setLoading(true);
+      setError(null); // Clear any previous errors
+      
+      // Fetch nearby places (within 80km)
+      const nearbyResponse = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/travel/nearby`, {
+        params: {
+          lat: coords.lat,
+          lng: coords.lng
+        }
+      });
+      
+      if (nearbyResponse.data.error) {
+        console.error(`Error fetching nearby places: ${nearbyResponse.data.error}`);
+        setError(`Error fetching nearby places: ${nearbyResponse.data.error}`);
+        setNearbyPlaces([]);
+      } else if (nearbyResponse.data && nearbyResponse.data.places) {
+        setNearbyPlaces(nearbyResponse.data.places);
+      } else {
+        setNearbyPlaces([]);
+      }
+      
+      // Fetch distant places (80km-1000km)
+      const distantResponse = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/travel/distant`, {
+        params: {
+          lat: coords.lat,
+          lng: coords.lng
+        }
+      });
+      
+      if (distantResponse.data.error) {
+        console.error(`Error fetching distant places: ${distantResponse.data.error}`);
+        if (!nearbyResponse.data.error) { // Only set error if not already set
+          setError(`Error fetching distant places: ${distantResponse.data.error}`);
+        }
+        setDistantPlaces([]);
+      } else if (distantResponse.data && distantResponse.data.places) {
+        setDistantPlaces(distantResponse.data.places);
+      } else {
+        setDistantPlaces([]);
+      }
+      
+      setLoading(false);
+    } catch (err) {
+      console.error("Error fetching places:", err);
+      setError(err.response?.data?.error || "Unable to fetch places. Please try again later.");
+      setNearbyPlaces([]);
+      setDistantPlaces([]);
+      setLoading(false);
+    }
+  };
+
+  const handleLocationSelect = (suggestion) => {
+    const locationName = suggestion.display_name;
+    setSearchQuery(locationName);
+    setShowSuggestions(false);
+    
+    const coords = {
+      lat: parseFloat(suggestion.lat),
+      lng: parseFloat(suggestion.lon)
+    };
+    
+    setUserCoords(coords);
+    sessionStorage.setItem("location", locationName);
+    fetchPlaces(coords);
+  };
+
+  const handleLocationSearch = async (e) => {
+    e.preventDefault();
+    
+    if (!searchQuery.trim()) return;
+    
+    try {
+      setLoading(true);
+      setShowSuggestions(false); // Hide suggestions when search is initiated
+      
+      // Geocode the search query to get coordinates
+      const response = await axios.get(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1`
+      );
+      
+      if (response.data && response.data.length > 0) {
+        const coords = {
+          lat: parseFloat(response.data[0].lat),
+          lng: parseFloat(response.data[0].lon)
+        };
+        setUserCoords(coords);
+        fetchPlaces(coords);
+        
+        // Save to session storage
+        sessionStorage.setItem("location", searchQuery);
+      } else {
+        setError("Location not found. Please try a different search term.");
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error("Error searching location:", err);
+      setError("Error searching for location. Please try again.");
+      setLoading(false);
+    }
+  };
+
+  // Get photo URL from photo reference
+  const getPhotoUrl = (photoRef) => {
+    if (photoRef && import.meta.env.VITE_GOOGLE_PLACES_API_KEY) {
+      return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photoRef}&key=${import.meta.env.VITE_GOOGLE_PLACES_API_KEY}`;
+    }
+    return fallbackImage;
+  };
+
+  // Click handler for document to hide suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      const searchBox = document.querySelector('.search-box');
+      if (searchBox && !searchBox.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, []);
+
+  // Handle Explore button click - stores data to sessionStorage and navigates to summary page
+  const handleExploreClick = (place) => {
+    // Store trip data in sessionStorage for the summary page to use
+    sessionStorage.setItem('packageTrip', JSON.stringify({
+      origin: searchQuery, // Current location
+      destination: place.name,
+      originCoords: userCoords,
+      destinationCoords: { lat: place.lat, lng: place.lng },
+      distance: place.distance
+    }));
+    
+    // Navigate to summary page with special parameter
+    navigate('/summary/packages');
   };
 
   return (
@@ -44,7 +319,7 @@ const TravelPackage = () => {
               <a href="#profile">My Profile</a>
               <a href="#settings">Settings</a>
               <a href="#switch">Switch Account</a>
-              <a href="#signout">Sign Out</a>
+              <a href="#signout" onClick={handleSignOut}>Sign Out</a>
             </div>
           )}
         </div>
@@ -54,166 +329,152 @@ const TravelPackage = () => {
 
       <div className="location-search-container">
         <div className="location-search-wrapper">
-          <div className="search-box">
+          <form onSubmit={handleLocationSearch} className="search-box">
             <input
               type="text"
               placeholder="Search destinations..."
               className="search-input"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={handleSearchInputFocus}
+              ref={searchInputRef}
             />
+            <button type="submit" className="search-button">Search</button>
+            
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="location-suggestions">
+                {suggestions.map((suggestion) => (
+                  <div 
+                    key={suggestion.place_id} 
+                    className="location-suggestion-item"
+                    onClick={() => handleLocationSelect(suggestion)}
+                  >
+                    {suggestion.display_name}
+                  </div>
+                ))}
           </div>
+            )}
+          </form>
           <button
             className="current-location-btn"
-            onClick={handleLocationClick}
+            onClick={() => {
+              if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                  async (position) => {
+                    const coords = {
+                      lat: position.coords.latitude,
+                      lng: position.coords.longitude
+                    };
+                    setUserCoords(coords);
+                    
+                    // Reverse geocode to get location name
+                    try {
+                      const response = await axios.get(
+                        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}&zoom=10`
+                      );
+                      if (response.data && response.data.display_name) {
+                        setSearchQuery(response.data.display_name);
+                        sessionStorage.setItem("location", response.data.display_name);
+                      }
+                    } catch (err) {
+                      console.error("Error reverse geocoding:", err);
+                    }
+                    
+                    fetchPlaces(coords);
+                  },
+                  (err) => {
+                    console.error("Geolocation error:", err);
+                    setError("Unable to get your location. Please enter a location in the search box.");
+                  }
+                );
+              }
+            }}
           >
             <IoLocationSharp size={20} />
-            {/* <span>Current Location</span> */}
           </button>
         </div>
       </div>
 
+      {error && <div className="error-message">{error}</div>}
+      
+      {loading ? (
+        <div className="loading-container">
+          <p>Loading places...</p>
+        </div>
+      ) : (
+        <>
+          {/* Nearby Places Section */}
       <section className="featured-packages">
         <h2>Featured Travel Packages</h2>
-        <h4>Places near you</h4>
+            <h4>{userCoords ? 'Places near you (within 80km)' : 'Location not available'}</h4>
         <div className="package-grid">
-          <div className="package-card">
-            <div className="card-image tropical"></div>
+              {nearbyPlaces.length > 0 ? (
+                nearbyPlaces.map((place, index) => (
+                  <div className="package-card" key={`nearby-${index}`}>
+                    <div 
+                      className="card-image" 
+                      style={{ 
+                        backgroundImage: `url(${place.photoRef ? getPhotoUrl(place.photoRef) : fallbackImage})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center'
+                      }}
+                    ></div>
             <div className="card-content">
-              <h3>Tropical Paradise Getaway</h3>
-              <p>Experience the ultimate relaxation in a luxurious oceanfront resort.</p>
-              <button className="explore-btn">Explore More</button>
+                      <h3>{place.name}</h3>
+                      <h5>{place.distance} km</h5>
+                      <button 
+                        className="explore-btn"
+                        onClick={() => handleExploreClick(place)}
+                      >
+                        Explore
+                      </button>
             </div>
           </div>
-
-          <div className="package-card">
-            <div className="card-image mountain"></div>
-            <div className="card-content">
-              <h3>Mountain Adventure Tour</h3>
-              <p>Embark on a thrilling journey through majestic mountain landscapes.</p>
-              <button className="explore-btn">Explore More</button>
+                ))
+              ) : userCoords ? (
+                <div className="no-places-message">
+                  <p>No nearby places found within 80km of your location.</p>
             </div>
-          </div>
-
-          <div className="package-card">
-            <div className="card-image city"></div>
-            <div className="card-content">
-              <h3>Cultural City Exploration</h3>
-              <p>Discover the rich history and vibrant culture of a bustling city.</p>
-              <button className="explore-btn">Explore More</button>
-            </div>
-          </div>
-
-          <div className="package-card">
-            <div className="card-image" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1512100356356-de1b84283e18?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')` }}></div>
-            <div className="card-content">
-              <h3>Desert Safari Adventure</h3>
-              <p>Experience the thrill of desert dunes and traditional Bedouin culture.</p>
-              <button className="explore-btn">Explore More</button>
-            </div>
-          </div>
-
-          <div className="package-card">
-            <div className="card-image" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1534008757030-27299c4371b6?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')` }}></div>
-            <div className="card-content">
-              <h3>Island Hopping Tour</h3>
-              <p>Explore multiple pristine islands and discover hidden beaches.</p>
-              <button className="explore-btn">Explore More</button>
-            </div>
-          </div>
-
-          <div className="package-card">
-            <div className="card-image" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')` }}></div>
-            <div className="card-content">
-              <h3>Rainforest Expedition</h3>
-              <p>Discover exotic wildlife and ancient ecosystems in pristine rainforests.</p>
-              <button className="explore-btn">Explore More</button>
-            </div>
-          </div>
+              ) : null}
         </div>
       </section>
 
+          {/* Distant Places Section */}
       <section className="featured-packages">
-        <h4>Places in Kerala</h4>
+            <h4>{userCoords ? 'Famous tourist spots (80km - 1000km)' : 'Location not available'}</h4>
         <div className="package-grid">
-          <div className="package-card">
-            <div className="card-image tropical"></div>
+              {distantPlaces.length > 0 ? (
+                distantPlaces.map((place, index) => (
+                  <div className="package-card" key={`distant-${index}`}>
+                    <div 
+                      className="card-image" 
+                      style={{ 
+                        backgroundImage: `url(${place.photoRef ? getPhotoUrl(place.photoRef) : fallbackImage})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center'
+                      }}
+                    ></div>
             <div className="card-content">
-              <h3>Tropical Paradise Getaway</h3>
-              <p>Experience the ultimate relaxation in a luxurious oceanfront resort.</p>
-              <button className="explore-btn">Explore More</button>
+                      <h3>{place.name}</h3>
+                      <h5>{place.distance} km</h5>
+                      <button 
+                        className="explore-btn"
+                        onClick={() => handleExploreClick(place)}
+                      >
+                        Explore
+                      </button>
             </div>
           </div>
-
-          <div className="package-card">
-            <div className="card-image mountain"></div>
-            <div className="card-content">
-              <h3>Mountain Adventure Tour</h3>
-              <p>Embark on a thrilling journey through majestic mountain landscapes.</p>
-              <button className="explore-btn">Explore More</button>
+                ))
+              ) : userCoords ? (
+                <div className="no-places-message">
+                  <p>No tourist spots found between 80km and 1000km of your location.</p>
             </div>
-          </div>
-
-          <div className="package-card">
-            <div className="card-image city"></div>
-            <div className="card-content">
-              <h3>Cultural City Exploration</h3>
-              <p>Discover the rich history and vibrant culture of a bustling city.</p>
-              <button className="explore-btn">Explore More</button>
-            </div>
-          </div>
-
-          <div className="package-card">
-            <div className="card-image" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1512100356356-de1b84283e18?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')` }}></div>
-            <div className="card-content">
-              <h3>Desert Safari Adventure</h3>
-              <p>Experience the thrill of desert dunes and traditional Bedouin culture.</p>
-              <button className="explore-btn">Explore More</button>
-            </div>
-          </div>
-
-          <div className="package-card">
-            <div className="card-image" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1534008757030-27299c4371b6?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')` }}></div>
-            <div className="card-content">
-              <h3>Island Hopping Tour</h3>
-              <p>Explore multiple pristine islands and discover hidden beaches.</p>
-              <button className="explore-btn">Explore More</button>
-            </div>
-          </div>
-
-          <div className="package-card">
-            <div className="card-image" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')` }}></div>
-            <div className="card-content">
-              <h3>Rainforest Expedition</h3>
-              <p>Discover exotic wildlife and ancient ecosystems in pristine rainforests.</p>
-              <button className="explore-btn">Explore More</button>
-            </div>
-          </div>
+              ) : null}
         </div>
       </section>
-
-
-      {/* <footer className="footer">
-        <div className="footer-content">
-          <div className="contact-info">
-            <h3>Contact Us</h3>
-            <p>Email: routeweaver25.com</p>
-            <p>Phone: +91 9892746294</p>
-          </div>
-          <div className="social-links">
-            <h3>Follow Us</h3>
-            <div className="social-icons">
-              <a href="#facebook" aria-label="Facebook">
-                <FaFacebookF />
-              </a>
-              <a href="#twitter" aria-label="Twitter">
-                <FaTwitter />
-              </a>
-              <a href="#instagram" aria-label="Instagram">
-                <FaInstagram />
-              </a>
-            </div>
-          </div>
-        </div>
-      </footer> */}
+        </>
+      )}
     </>
   );
 };

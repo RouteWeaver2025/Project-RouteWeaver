@@ -12,6 +12,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@google/generative-ai": "^0.24.0",
     "@googlemaps/google-maps-services-js": "^3.4.0",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^2.4.3",

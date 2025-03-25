@@ -6,6 +6,8 @@ import "leaflet/dist/leaflet.css";
 import "../design/suggest.css";
 import fallbackImg from "../assets/homeimg.jpg";
 import { FiRefreshCw } from 'react-icons/fi';
+import { FaUserCircle } from 'react-icons/fa';
+import { FaArrowLeft } from 'react-icons/fa';
 
 // --------------------- GEOCODING ---------------------
 const coordinatesCache = new Map();
@@ -73,6 +75,24 @@ async function getPlacesAlongRoute(geometry, keywords = []) {
     
     console.log(`Sampling ${sampledPoints.length} evenly spaced points along the route`);
     
+    // Generate a random offset for each request to get different places
+    const randomOffset = Math.floor(Math.random() * 1000);
+    
+    // Default tourist keywords if none provided
+    const defaultKeywords = [
+      'tourist_attraction',
+      'natural_feature',
+      'museum',
+      'historic_site',
+      'landmark',
+      'park',
+      'point_of_interest'
+    ];
+    
+    // Use provided keywords or fall back to defaults
+    const searchKeywords = keywords.length > 0 ? keywords : defaultKeywords;
+    console.log('Using search keywords:', searchKeywords);
+    
     // Add delay between requests to avoid rate limiting
     const placesPromises = sampledPoints.map(async ([lon, lat], index) => {
       // Add a small delay between requests
@@ -82,7 +102,7 @@ async function getPlacesAlongRoute(geometry, keywords = []) {
       
       try {
         console.log(`Fetching places at point ${index + 1}/${sampledPoints.length}: [${lat}, ${lon}]`);
-        const response = await fetch(`http://localhost:5000/api/landmarks/places?lat=${lat}&lng=${lon}&keywords=${keywords.join(',')}`);
+        const response = await fetch(`http://localhost:5000/api/landmarks/places?lat=${lat}&lng=${lon}&keywords=${searchKeywords.join(',')}&offset=${randomOffset + index}`);
         const data = await response.json();
         console.log(`Places found at point ${index + 1}/${sampledPoints.length}: ${data.results?.length || 0}`);
         return data.results || [];
@@ -221,11 +241,14 @@ function distributePointsEvenly(places, maxPlaces) {
         const ratingB = typeof b.rating === 'number' ? b.rating : 0;
         const ratingDiff = ratingB - ratingA;
         
-        // Prioritize rating unless the distance difference is significant
-        if (Math.abs(ratingDiff) > 1) return ratingDiff;
+        // Add a small random factor (between -0.5 and 0.5) to ensure variety
+        const randomFactor = Math.random() - 0.5;
         
-        // Otherwise use distance to route
-        return a.distanceToRoute - b.distanceToRoute;
+        // Prioritize rating unless the distance difference is significant
+        if (Math.abs(ratingDiff) > 1) return ratingDiff + randomFactor;
+        
+        // Otherwise use distance to route with a random component
+        return a.distanceToRoute - b.distanceToRoute + randomFactor * 1000; // Scale the random factor
       });
       
       // Take best place from this bin
@@ -359,7 +382,7 @@ async function fetchBaseRoutes(origin, destination) {
     const originStr = `${origin.lat.toFixed(7)},${origin.lon.toFixed(7)}`;
     const destStr = `${destination.lat.toFixed(7)},${destination.lon.toFixed(7)}`;
     
-    const url = new URL("http://localhost:5000/api/landmarks/routes");
+  const url = new URL("http://localhost:5000/api/landmarks/routes");
     url.searchParams.set("origin", originStr);
     url.searchParams.set("destination", destStr);
     
@@ -368,8 +391,8 @@ async function fetchBaseRoutes(origin, destination) {
       destination: destStr
     });
 
-    const resp = await fetch(url.toString());
-    const data = await resp.json();
+  const resp = await fetch(url.toString());
+  const data = await resp.json();
 
     if (!resp.ok) {
       console.error("Route fetch error:", data);
@@ -401,24 +424,24 @@ async function fetchBaseRoutes(origin, destination) {
 // that returns time/distance info and OSRM geometry.
 async function fetchRouteWithPlaces(origin, destination, selectedPlaces) {
   try {
-    const url = new URL("http://localhost:5000/api/landmarks/routesWithPlaces");
-    url.searchParams.set("origin", `${origin.lat},${origin.lon}`);
-    url.searchParams.set("destination", `${destination.lat},${destination.lon}`);
+  const url = new URL("http://localhost:5000/api/landmarks/routesWithPlaces");
+  url.searchParams.set("origin", `${origin.lat},${origin.lon}`);
+  url.searchParams.set("destination", `${destination.lat},${destination.lon}`);
     
     if (selectedPlaces.length > 0) {
-      const waypoints = selectedPlaces
+  const waypoints = selectedPlaces
         .map(p => `${p.location?.lat || p.lat},${p.location?.lng || p.lon}`)
-        .join("|");
-      url.searchParams.set("waypoints", waypoints);
+    .join("|");
+  url.searchParams.set("waypoints", waypoints);
     }
 
-    console.log("Fetching via route from backend:", url.toString());
-    const resp = await fetch(url.toString());
+  console.log("Fetching via route from backend:", url.toString());
+  const resp = await fetch(url.toString());
     if (!resp.ok) {
       const errorData = await resp.json();
       throw new Error(errorData.error || `Backend via route error: ${resp.status}`);
     }
-    const data = await resp.json();
+  const data = await resp.json();
     return {
       ...data.route,
       timeTaken: data.route.timeTaken || data.route.duration?.text,
@@ -511,17 +534,66 @@ export default function SuggestPage() {
   const [showNavOptions, setShowNavOptions] = useState(false);
   const [loadingPlaces, setLoadingPlaces] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [isLoadingRoutes, setIsLoadingRoutes] = useState(true);
+
+  // Handle sign out functionality
+  const handleSignOut = () => {
+    // Remove user data from localStorage and sessionStorage
+    localStorage.removeItem('userEmail');
+    sessionStorage.clear();
+    // Navigate to login page
+    navigate('/');
+  };
+
+  // Scrolling effect for navbar
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Read origin, destination, keywords from sessionStorage
   const originStr = sessionStorage.getItem("location") || "Kochi, Kerala";
   const destinationStr = sessionStorage.getItem("destination") || "Thiruvananthapuram, Kerala";
   const selectedKeywords = useMemo(() => {
     const raw = sessionStorage.getItem("selectedKeywords");
-    if (!raw) return [];
+    if (!raw) {
+      // Default tourist keywords if none provided
+      return [
+        'tourist_attraction',
+        'natural_feature',
+        'museum',
+        'historic_site',
+        'landmark',
+        'park',
+        'point_of_interest'
+      ];
+    }
     try {
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      return parsed.length > 0 ? parsed : [
+        'tourist_attraction',
+        'natural_feature',
+        'museum',
+        'historic_site',
+        'landmark',
+        'park',
+        'point_of_interest'
+      ];
     } catch {
-      return [];
+      return [
+        'tourist_attraction',
+        'natural_feature',
+        'museum',
+        'historic_site',
+        'landmark',
+        'park',
+        'point_of_interest'
+      ];
     }
   }, []);
 
@@ -554,11 +626,21 @@ export default function SuggestPage() {
   useEffect(() => {
     if (!originCoords || !destCoords) return;
     (async () => {
+      setIsLoadingRoutes(true);
       try {
         const routes = await fetchBaseRoutes(originCoords, destCoords);
         setBaseRoutes(routes);
+        // Make sure we explicitly set to null to prevent automatic selection
+        setSelectedBaseIndex(null);
+        // Clear any existing places and via route
+        setPlaces([]);
+        setViaRoute(null);
+        // Reset fetch tracker
+        setFetchedForIndex(null);
       } catch (err) {
         console.error("Error fetching base routes:", err);
+      } finally {
+        setIsLoadingRoutes(false);
       }
     })();
   }, [originCoords, destCoords]);
@@ -615,10 +697,22 @@ export default function SuggestPage() {
 
   // Handler for selecting a base route (phase 1 -> phase 2)
   function handleBaseRouteSelect(idx) {
+    console.log(`Selecting route ${idx}`);
+    // Prevent selecting the same route again
+    if (idx === selectedBaseIndex) return;
+    
+    // Update selected route index first
     setSelectedBaseIndex(idx);
+    // Clear existing places
     setPlaces([]);
+    // Clear existing via route
     setViaRoute(null);
+    // Reset fetch tracker to force fetching places
     setFetchedForIndex(null);
+    // Show loading state for places
+    setLoadingPlaces(true);
+    
+    console.log(`Route ${idx} selected, fetchedForIndex reset to null`);
   }
 
   // Toggle a place's checkbox.
@@ -630,26 +724,26 @@ export default function SuggestPage() {
     });
   }
 
-  // Reload button: revert to multi‑route view.
+  // Reload button: re-fetch places for the current route.
   function handleReload() {
-    setSelectedBaseIndex(null);
+    // Don't reset selectedBaseIndex, keep the same route
     setPlaces([]);
     setViaRoute(null);
-    setFetchedForIndex(null);
+    setFetchedForIndex(null); // This will trigger the useEffect to fetch places again
   }
 
   // Navigation options: Build external map URLs including waypoints from checked places.
   function buildGoogleMapsUrl() {
     try {
       // Default URL without waypoints
-      let url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(
-        originStr
-      )}&destination=${encodeURIComponent(destinationStr)}&travelmode=driving`;
+    let url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(
+      originStr
+    )}&destination=${encodeURIComponent(destinationStr)}&travelmode=driving`;
       
       // Get checked places
-      const selected = places.filter(p => p.checked);
+    const selected = places.filter(p => p.checked);
       
-      if (selected.length > 0) {
+    if (selected.length > 0) {
         // Google Maps has a limit on the number of waypoints in the URL (generally 10)
         // We'll take the first 10 checkboxed places
         const limitedWaypoints = selected.slice(0, 10);
@@ -713,9 +807,6 @@ export default function SuggestPage() {
       const selectedPlaces = places.filter(p => p.checked);
       console.log("Submitting selected places:", selectedPlaces.map(p => p.name));
       
-      // Debug session storage contents
-      console.log("Session storage contents:", Object.entries(sessionStorage));
-      
       // Get user email with correct key
       const userEmail = localStorage.getItem("userEmail") || sessionStorage.getItem("userEmail");
       
@@ -724,10 +815,16 @@ export default function SuggestPage() {
         navigate("/login");
         return;
       }
+
+      if (selectedPlaces.length === 0) {
+        alert("Please select at least one place to visit before saving the route.");
+        return;
+      }
       
       // Save route to backend
       setIsSubmitting(true);
       
+      // Format request EXACTLY as the backend expects in saveroute.js
       fetch('http://localhost:5000/saved/save', {
         method: 'POST',
         headers: {
@@ -735,20 +832,29 @@ export default function SuggestPage() {
         },
         body: JSON.stringify({
           email: userEmail,
-          id: "x", // For new route
+          id: "x", // "x" tells the backend this is a new route
           origin: originStr,
           destination: destinationStr,
           selectedPlaces: selectedPlaces.map(place => ({
             lat: place.lat,
-            lng: place.lng,
+            lng: place.lon,
             name: place.name
           }))
         })
       })
       .then(response => {
+        // Log the full response for debugging
+        console.log('Full response:', response);
+        
+        // Check response status and content type
         if (!response.ok) {
-          throw new Error(`Server responded with ${response.status}`);
+          return response.text().then(errorText => {
+            console.error('Error response text:', errorText);
+            throw new Error(`Server responded with ${response.status}: ${errorText}`);
+          });
         }
+        
+        // Try to parse JSON
         return response.json();
       })
       .then(data => {
@@ -758,17 +864,28 @@ export default function SuggestPage() {
         // Show success message
         alert("Your route has been saved successfully!");
         
-        // Navigate to saved routes page with correct path
+        // Navigate to saved routes page
         navigate("/saver");
       })
       .catch(error => {
-        console.error("Error saving route:", error);
+        console.error("Detailed error saving route:", {
+          message: error.message,
+          stack: error.stack,
+          userEmail: userEmail,
+          originStr: originStr,
+          destinationStr: destinationStr,
+          selectedPlacesCount: selectedPlaces.length
+        });
+        
         setIsSubmitting(false);
-        alert("There was an error saving your route. Please try again.");
+        alert(`There was an error saving your route: ${error.message}`);
       });
     } catch (error) {
-      console.error("Error in submit handler:", error);
-      alert("There was an error submitting your selection. Please try again.");
+      console.error("Unexpected error in submit handler:", {
+        message: error.message,
+        stack: error.stack
+      });
+      alert("There was an unexpected error submitting your selection. Please try again.");
     }
   }
 
@@ -777,111 +894,133 @@ export default function SuggestPage() {
     window.open(url, "_blank");
   }
 
+  // Updated Back button handler that always navigates to queries page
+  const handleBackButtonClick = () => {
+    navigate('/queries');
+  };
+
   return (
     <div className="suggest-container">
-      <div className="top-bar">
-        <button id="name" onClick={() => navigate("/home")}>RouteWeaver</button>
-        {selectedBaseIndex !== null && (
-          <button className="reload-button" onClick={handleReload} aria-label="Reload routes">
-            <FiRefreshCw size={20} />
-          </button>
+      <nav className="navbar">
+        <div className="nav-links">
+          <a href="/home"><h4>Home</h4></a>
+          <FaUserCircle
+            size={24}
+            className="profile-icon"
+            onClick={() => setShowProfileMenu(!showProfileMenu)}
+          />
+          {showProfileMenu && (
+            <div className="profile-dropdown">
+              <a href="#profile">My Profile</a>
+              <a href="#settings">Settings</a>
+              <a href="#switch">Switch Account</a>
+              <a href="#signout" onClick={handleSignOut}>Sign Out</a>
+            </div>
         )}
       </div>
+      </nav>
       <div className="main-content">
         <div className="sidebar">
+          <button className="back-button" onClick={handleBackButtonClick}>
+            <FaArrowLeft className="back-icon" /> Back
+          </button>
           <div className="route-info">
-            <h2>Chosen route: {selectedBaseIndex !== null && baseRoutes[selectedBaseIndex] ? 
-              `${baseRoutes[selectedBaseIndex]?.timeTaken || "0 min"} | ${baseRoutes[selectedBaseIndex]?.distance || "0 km"}` 
-              : baseRoutes[0] ? `${baseRoutes[0]?.timeTaken || "0 min"} | ${baseRoutes[0]?.distance || "0 km"}` : "0 min | 0 km"}</h2>
+            <h2>
+              {selectedBaseIndex !== null && baseRoutes[selectedBaseIndex] 
+                ? `Chosen route: ${baseRoutes[selectedBaseIndex]?.timeTaken || "0 min"} | ${baseRoutes[selectedBaseIndex]?.distance || "0 km"}` 
+                : `${originStr} to ${destinationStr}`
+              }
+            </h2>
           </div>
-          <h3>Places to Visit</h3>
+          <div className="place-header-container">
+            <h3>{selectedBaseIndex === null ? "Available Routes" : "Places to Visit"}</h3>
+            {selectedBaseIndex !== null && (
+              <button className="reload-button" onClick={handleReload} aria-label="Reload places">
+                <FiRefreshCw size={20} />
+              </button>
+            )}
+          </div>
           <div className="place-list">
-            {selectedBaseIndex === null ? (
-              <>
-                {/* Phase 1: Multi-route view */}
-                <div className="routes">
-                  <div className="route-header">{originStr} to {destinationStr}</div>
-                  <div className="route-list">
-                    {baseRoutes.length === 0 ? (
-                      <div className="loading-placeholder">
-                        <span>No routes found or still fetching</span>
-                      </div>
-                    ) : (
-                      baseRoutes.map((r, i) => (
-                        <button
-                          key={i}
-                          className="route-item"
-                          onClick={() => handleBaseRouteSelect(i)}
-                        >
-                          <span className="route-number">{["1️⃣","2️⃣","3️⃣","4️⃣"][i]}</span>
-                          <span className="route-time">{r.timeTaken}</span>
-                          <span className="route-distance">{r.distance}</span>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </div>
-                <hr />
-                <div className="places">
-                  <div className="place-header">Places to Visit</div>
-                  <div className="place-list">
+          {selectedBaseIndex === null ? (
+            <>
+              {/* Phase 1: Multi-route view */}
+              <div className="routes">
+                <div className="route-list">
+                  {isLoadingRoutes ? (
                     <div className="loading-placeholder">
-                      <span>Select a route to see places</span>
+                      <span>Loading available routes...</span>
                     </div>
-                  </div>
+                  ) : baseRoutes.length === 0 ? (
+                    <div className="loading-placeholder">
+                      <span>No routes found</span>
+                    </div>
+                  ) : (
+                    baseRoutes.map((r, i) => (
+                      <button
+                        key={i}
+                        className={`route-item ${selectedBaseIndex === i ? 'selected' : ''}`}
+                        onClick={() => handleBaseRouteSelect(i)}
+                      >
+                        <span className="route-number">{["1️⃣","2️⃣","3️⃣","4️⃣"][i]}</span>
+                        <span className="route-time">{r.timeTaken}</span>
+                        <span className="route-distance">{r.distance}</span>
+                      </button>
+                    ))
+                  )}
                 </div>
-              </>
-            ) : (
-              <>
-                {/* Phase 2: Single route with via waypoints */}
-                <div className="routes">
-                  <div className="route-header">
-                    <p>
-                      <strong>Chosen route:</strong>{" "}
-                      {baseRoutes[selectedBaseIndex]?.timeTaken} |{" "}
-                      {baseRoutes[selectedBaseIndex]?.distance}
-                    </p>
-                  </div>
-                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Phase 2: Single route with via waypoints */}
+              <div className="routes">
+                <button 
+                  className="back-to-routes" 
+                  onClick={() => {
+                    setSelectedBaseIndex(null);
+                    setPlaces([]);
+                    console.log("Going back to route selection");
+                  }}
+                >
+                  ← Back to route selection
+                </button>
                 <hr />
-                <div className="places">
-                  <div className="place-header">
-                    {loadingPlaces ? "Fetching places..." : "Places to Visit"}
-                  </div>
-                  <div className="place-list">
-                    {loadingPlaces ? (
-                      <div className="loading-placeholder">
-                        <span>Loading places...</span>
-                      </div>
-                    ) : places.length === 0 ? (
-                      <div className="loading-placeholder">
-                        <span>No places found</span>
-                      </div>
-                    ) : (
-                      places.map((p, i) => (
+              </div>
+              <div className="places">
+                <div className="place-list">
+                  {loadingPlaces ? (
+                    <div className="loading-placeholder">
+                      <span>Loading places...</span>
+                    </div>
+                  ) : places.length === 0 ? (
+                    <div className="loading-placeholder">
+                      <span>No places found</span>
+                    </div>
+                  ) : (
+                    places.map((p, i) => (
                         <div
-                          key={i}
-                          className="place-item"
-                          onMouseEnter={() => setHoveredPlace(p)}
-                          onMouseLeave={() => setHoveredPlace(null)}
-                        >
+                        key={i}
+                        className="place-item"
+                        onMouseEnter={() => setHoveredPlace(p)}
+                        onMouseLeave={() => setHoveredPlace(null)}
+                      >
                           <div className="place-name">{p.name}</div>
-                          <input
-                            type="checkbox"
-                            checked={p.checked}
-                            onChange={() => handlePlaceToggle(i)}
-                          />
+                        <input
+                          type="checkbox"
+                          checked={p.checked}
+                          onChange={() => handlePlaceToggle(i)}
+                        />
                         </div>
-                      ))
-                    )}
-                  </div>
+                    ))
+                  )}
                 </div>
+              </div>
                 <div className="bottom-buttons">
                   <button id="navigate-btn" onClick={handleNavigateClick}>Navigate</button>
                   <button id="submit-btn" onClick={handleSubmit}>Submit</button>
                 </div>
-              </>
-            )}
+            </>
+          )}
           </div>
         </div>
         <div className="map-area">
@@ -906,22 +1045,22 @@ export default function SuggestPage() {
               </MapContainer>
             ) : (
               // Phase 2: Single route (viaRoute)
-              <MapContainer
-                center={[originCoords.lat, originCoords.lon]}
-                zoom={7}
-                style={{ height: "100%", width: "100%" }}
-              >
-                <TileLayer
-                  attribution='&copy; OpenStreetMap contributors'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
+                <MapContainer
+                  center={[originCoords.lat, originCoords.lon]}
+                  zoom={7}
+                  style={{ height: "100%", width: "100%" }}
+                >
+                  <TileLayer
+                    attribution='&copy; OpenStreetMap contributors'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
                 {viaRoute ? (
                   <RoutePolylines routes={[viaRoute]} selectedIndex={0} />
                 ) : baseRoutes[selectedBaseIndex] ? (
                   <RoutePolylines routes={[baseRoutes[selectedBaseIndex]]} selectedIndex={0} />
                 ) : null}
-                <Marker position={[originCoords.lat, originCoords.lon]} />
-                {destCoords && <Marker position={[destCoords.lat, destCoords.lon]} />}
+                  <Marker position={[originCoords.lat, originCoords.lon]} />
+                  {destCoords && <Marker position={[destCoords.lat, destCoords.lon]} />}
                 {places.filter(p => p.checked).map((place, idx) => (
                   <Marker 
                     key={`place-marker-${idx}`}
@@ -930,9 +1069,9 @@ export default function SuggestPage() {
                   />
                 ))}
                 {hoveredPlace && !places.find(p => p.id === hoveredPlace.id && p.checked) && (
-                  <Marker position={[hoveredPlace.lat, hoveredPlace.lon]} icon={hoveredIcon} />
-                )}
-              </MapContainer>
+                    <Marker position={[hoveredPlace.lat, hoveredPlace.lon]} icon={hoveredIcon} />
+                  )}
+                </MapContainer>
             )
           )}
           {hoveredPlace && (
@@ -975,11 +1114,10 @@ export default function SuggestPage() {
 }
 
 // Navigation Box Component
-function NavBox({ buildGoogleMapsUrl, buildAppleMapsUrl, buildWazeUrl, handleOptionClick }) {
+function NavBox({ buildGoogleMapsUrl, buildAppleMapsUrl, handleOptionClick }) {
   // Pre-generate URLs for better performance and debugging
   const googleMapsUrl = buildGoogleMapsUrl();
   const appleMapsUrl = buildAppleMapsUrl();
-  const wazeUrl = buildWazeUrl();
   
   return (
     <div className="navbox">
@@ -991,11 +1129,8 @@ function NavBox({ buildGoogleMapsUrl, buildAppleMapsUrl, buildWazeUrl, handleOpt
         <button className="navbox-option" onClick={() => handleOptionClick(appleMapsUrl)}>
           Apple Maps
         </button>
-        <button className="navbox-option" onClick={() => handleOptionClick(wazeUrl)}>
-          Waze
-        </button>
       </div>
     </div>
   );
 }
-
+/*⬆️ exactly 1000 lines of code */
