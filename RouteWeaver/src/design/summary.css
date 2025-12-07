@@ -41,6 +41,46 @@ body, html {
     z-index: 1000;
 }
 
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.nav-links a {
+    color: white;
+    text-decoration: none;
+}
+
+.profile-icon {
+    color: white;
+    cursor: pointer;
+}
+
+.profile-dropdown {
+    position: absolute;
+    top: 60px;
+    right: 20px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    padding: 10px 0;
+    z-index: 1000;
+    min-width: 150px;
+}
+
+.profile-dropdown a {
+    display: block;
+    padding: 10px 20px;
+    color: #333;
+    text-decoration: none;
+    transition: background-color 0.3s;
+}
+
+.profile-dropdown a:hover {
+    background-color: #f0f0f0;
+}
+
 .summary-container #name {
     color: white;
     font-size: 24px;
@@ -68,60 +108,155 @@ body, html {
 /* Sidebar styling */
 .sidebar {
     width: 380px;
-    background: white;
-    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+    background: #1a1a2e;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
     display: flex;
     flex-direction: column;
     height: 100%;
     position: relative;
     overflow-y: auto;
+    padding-top: 60px; /* Add space for the navbar */
+}
+
+/* Back button moved below nav bar */
+.back-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border: none;
+    background: none;
+    font-size: 16px;
+    font-weight: 500;
+    color: #ddd;
+    cursor: pointer;
+    transition: color 0.3s ease;
+    width: fit-content;
+    margin: 15px 0 0 15px;
+}
+
+.back-button:hover {
+    color: #2196F3;
+}
+
+.back-icon {
+    font-size: 18px;
 }
 
 .route-header {
-    padding: 20px 20px 0 20px;
+    padding: 10px 20px 0 20px;
 }
 
 .route-header h3 {
-    font-size: 18px;
-    color: #2c3e50;
+    font-size: 20px;
+    color: white;
     margin-bottom: 16px;
     padding-bottom: 12px;
     border-bottom: 2px solid #e9ecef;
+    font-weight: 600;
 }
 
 .route-info {
-    padding: 20px 20px 0 20px;
+    padding: 15px 20px;
+    background-color: #272640;
+    border-radius: 10px;
+    margin: 0 20px 20px 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.origin-dest-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.start-point {
+    color: #0ca678;
+    font-weight: 600;
+    font-size: 16px;
+    flex: 1;
+}
+
+.route-arrow {
+    color: #555;
+    font-size: 18px;
+    margin: 0 10px;
+}
+
+.end-point {
+    color: #e74c3c;
+    font-weight: 600;
+    font-size: 16px;
+    flex: 1;
+}
+
+.route-stats {
+    background-color: #312f51;
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 0px;
+}
+
+.route-stats p {
+    margin: 5px 0;
+    color: white;
+    font-size: 14px;
+}
+
+/* Places header */
+.places-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px 5px 20px;
+    margin-bottom: 5px;
+}
+
+.places-header h4 {
+    font-size: 18px;
+    color: white;
+    font-weight: 600;
+}
+
+.places-header span {
+    background-color: #3498db;
+    color: white;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 12px;
 }
 
 /* Place list container */
 .place-list {
     flex: 1;
     overflow-y: auto;
-    padding: 16px 20px;
+    padding: 8px 20px;
     margin-bottom: 80px;
 }
 
 /* Place items */
 .place-item {
-    background: #f8f9fa;
-    padding: 16px;
+    background: #272640;
+    padding: 15px;
     margin: 8px 0;
-    border-radius: 12px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     transition: all 0.2s ease;
     cursor: pointer;
+    border: 1px solid #312f51;
 }
 
 .place-item:hover {
-    background: #e9ecef;
-    transform: translateX(4px);
+    background: #312f51;
+    transform: translateX(2px);
 }
 
 .place-item .place-name {
     font-size: 15px;
-    color: #2c3e50;
+    color: white;
+    font-weight: 500;
     margin-right: 12px;
 }
 
@@ -131,63 +266,192 @@ body, html {
     border-radius: 4px;
     border: 2px solid #3498db;
     cursor: pointer;
+    accent-color: #2196F3;
 }
 
-/* Bottom buttons */
+/* Bottom buttons - single navigate button */
 .bottom-buttons {
     position: absolute;
     bottom: 0;
     left: 0;
     width: 100%;
     padding: 16px 20px;
-    background: white;
-    border-top: 1px solid #e9ecef;
-    display: flex;
-    gap: 12px;
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+    background: #1a1a2e;
+    border-top: 1px solid #312f51;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
 }
 
-.bottom-buttons button {
-    flex: 1;
-    padding: 12px;
+#navigate-btn {
+    width: 100%;
+    padding: 14px;
     border: none;
     border-radius: 8px;
     font-size: 16px;
     font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-#navigate-btn {
     background: #3498db;
     color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
-#submit-btn {
-    background: #2ecc71;
-    color: white;
-}
-
-#navigate-btn:hover, #submit-btn:hover {
-    opacity: 0.9;
+#navigate-btn:hover {
+    background: #2980b9;
     transform: translateY(-1px);
 }
 
-/* Reload button styling */
-.reload-button {
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
-    border: none;
-    width: 40px;
-    border-radius: 38px;
-    padding: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    margin-left: auto;
+/* Navigation options centered in screen - dark theme */
+.nav-options {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #1a1a2e;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    padding: 20px;
+    z-index: 1100;
+    display: flex;
+    flex-direction: column;
+    width: 400px;
+    max-width: 90vw;
+    border: 1px solid #312f51;
 }
 
-.reload-button:hover {
-    transform: rotate(180deg);
+.nav-options-header {
+    font-size: 18px;
+    font-weight: 600;
+    color: white;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #312f51;
+    text-align: center;
+}
+
+.cost-estimate {
+    background-color: #272640;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    text-align: center;
+    border: 1px solid #312f51;
+}
+
+.cost-estimate p {
+    margin: 5px 0;
+    color: white;
+    font-size: 14px;
+}
+
+.cost-estimate .cost-value {
+    font-size: 24px;
+    font-weight: 600;
+    color: #3498db;
+    margin: 10px 0;
+}
+
+.cost-note {
+    font-size: 12px;
+    color: #999;
+    font-style: italic;
+    margin-top: 5px;
+}
+
+/* Navigation error message - dark theme */
+.nav-error {
+    background-color: rgba(229, 62, 62, 0.1);
+    border: 1px solid rgba(229, 62, 62, 0.3);
+    border-radius: 8px;
+    padding: 15px;
+    margin: 10px 0;
+    text-align: center;
+}
+
+.nav-error p {
+    color: #e74c3c;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.retry-btn {
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.retry-btn:hover {
+    background-color: #c0392b;
+}
+
+.nav-options button {
+    background-color: #f8f9fa;
+    color: #333;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 12px;
+    margin: 8px 0;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.nav-options button:hover {
+    background-color: #e9ecef;
+}
+
+.nav-options .google-maps-btn {
+    background-color: #4285F4;
+    color: white;
+    border: none;
+}
+
+.nav-options .apple-maps-btn {
+    background-color: #000;
+    color: white;
+    border: none;
+}
+
+.nav-options .google-maps-btn:hover {
+    background-color: #3367d6;
+}
+
+.nav-options .apple-maps-btn:hover {
+    background-color: #333;
+}
+
+.nav-options-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: #aaa;
+    width: auto;
+    height: auto;
+    padding: 2px 6px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nav-options-close:hover {
+    color: #666;
 }
 
 /* Map area styling */
@@ -197,38 +461,6 @@ body, html {
     display: block;
     height: 100vh;
     width: calc(100vw - 380px); /* Account for sidebar width */
-}
-
-/* Navigation options */
-.nav-options {
-    position: absolute;
-    bottom: 80px;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: white;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    padding: 10px;
-    z-index: 1000;
-    display: flex;
-    flex-direction: column;
-    width: 80%;
-}
-
-.nav-options button {
-    background-color: #4a90e2;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 8px 12px;
-    margin: 5px 0;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.nav-options button:hover {
-    background-color: #357bd8;
 }
 
 /* Hover box styling */
@@ -249,172 +481,89 @@ body, html {
 }
 
 .hoverbox-name {
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 600;
     color: #2c3e50;
-    margin: 0 0 8px 0;
+    margin-bottom: 8px;
 }
 
-/* Origin/Destination styling */
-.origin-dest-item {
-    background: #f0f2f5;
-    color: #2c3e50;
-    padding: 16px;
-    border-radius: 12px;
-    margin: 8px 0;
-}
-
-.start-point {
-    color: #2ecc71;
-    font-weight: bold;
-}
-
-.end-point {
-    color: #e74c3c;
-    font-weight: bold;
-}
-
-/* Error and loading messages */
-.error-message, .loading-message {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+/* Loading and error messages */
+.loading-message, .error-message {
     padding: 20px;
-    margin: 20px 0;
     text-align: center;
-    background-color: #f8f9fa;
-    border-radius: 5px;
-    min-height: 150px;
-}
-
-.error-message p {
-    color: #F44336;
-    font-weight: bold;
-}
-
-.loading-message p {
-    color: #2196F3;
-    font-weight: bold;
-}
-
-/* Places header */
-.places-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 20px;
-    color: #2c3e50;
-}
-
-.places-header h4 {
-    margin: 0;
-    font-size: 16px;
-}
-
-.places-header span {
-    font-size: 14px;
     color: #666;
 }
 
-/* Media queries for responsive design */
-@media screen and (max-width: 800px) {
-    .top-bar {
-        padding: 0 16px;
-    }
-
-    .summary-container #name {
-        position: static;
-        padding: 8px 0;
-    }
-
-    .reload-button {
-        margin-left: auto;
-    }
-
-    .content-container {
-        flex-direction: column;
-    }
-
-    .sidebar {
-        width: 100%;
-        height: 50vh;
-        overflow-y: auto;
-    }
-
-    .place-list {
-        padding: 16px;
-        margin-bottom: 90px;
-    }
-
-    .bottom-buttons {
-        position: fixed;
-        bottom: 0;
-        width: 100%;
-        padding: 12px 16px;
-        background: white;
-        z-index: 1000;
-    }
-
-    .map-area {
-        width: 100%; /* Full width on mobile */
-        height: 50vh;
-    }
-
-    .hoverbox {
-        width: calc(100% - 32px);
-        bottom: 90px;
-        right: 16px;
-        left: 16px;
-    }
-
-    .nav-options {
-        width: calc(100% - 32px);
-        max-width: none;
-    }
+.error-message {
+    color: #e74c3c;
 }
 
-/* Place marker popup styles */
-.place-popup {
-  padding: 5px;
-  max-width: 250px;
-}
-
-.place-popup h3 {
-  margin: 0 0 8px 0;
-  font-size: 16px;
-  color: #333;
-}
-
-.place-popup p {
-  margin: 5px 0;
-  font-size: 14px;
-  color: #555;
-}
-
+/* Place toggle button in popup */
 .place-toggle-btn {
-  background-color: #2196F3;
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  margin-top: 8px;
-  transition: background-color 0.3s;
-  width: 100%;
-}
-
-.place-toggle-btn:hover {
-  background-color: #0b7dda;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 10px;
+    margin-top: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
 }
 
 .place-toggle-btn.selected {
-  background-color: #4CAF50;
+    background-color: #e74c3c;
 }
 
-.place-toggle-btn.selected:hover {
-  background-color: #45a049;
+.place-toggle-btn:hover {
+    opacity: 0.9;
+}
+
+/* Place popup styling */
+.place-popup {
+    padding: 5px;
+}
+
+.place-popup h3 {
+    margin-bottom: 8px;
+    color: #2c3e50;
+}
+
+.place-popup p {
+    margin: 4px 0;
+    color: #555;
+    font-size: 14px;
+}
+
+/* Media queries for responsive design */
+@media (max-width: 768px) {
+    .content-container {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+        height: 50%;
+        overflow-y: auto;
+    }
+    
+    .map-area {
+        width: 100%;
+        height: 50%;
+    }
+    
+    .bottom-buttons {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        z-index: 1000;
+    }
+    
+    .nav-options {
+        width: 95%;
+        max-width: 400px;
+    }
 }
 
 /* Enhance the map container responsiveness */

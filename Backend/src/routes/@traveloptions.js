@@ -1,5 +1,6 @@
 import express from 'express';
-import { getNearbyPlaces, getDistantPlaces } from '../utils/place.js';
+import { getNearbyPlaces, getDistantPlaces, getRoutePlaces } from '../utils/options.js';
+import { getCost } from '../utils/gemini.js';
 
 const travelRouter = express.Router();
 
@@ -79,6 +80,55 @@ travelRouter.get('/distant', async (req, res) => {
     res.status(500).json({ 
       error: 'Server error while fetching distant places',
       details: error.message 
+    });
+  }
+});
+
+/**
+ * Route to get places along a route between origin and destination
+ * @route GET /travel/routePlaces
+ * @param {string} origin - Origin location name
+ * @param {string} destination - Destination location name
+ * @param {string} [keyword] - Optional keyword for place type (default: tourist attractions)
+ * @returns {Object} Places and route data
+ */
+travelRouter.get('/routePlaces', getRoutePlaces);
+
+/**
+ * Route to get estimated travel cost
+ * @route POST /travel/cost
+ * @param {string} origin - Origin location name
+ * @param {string} destination - Destination location name
+ * @param {Array} places - Array of place names to visit
+ * @param {number} numPeople - Number of people traveling
+ * @returns {Object} Cost estimate data
+ */
+travelRouter.post('/cost', async (req, res) => {
+  try {
+    const { origin, destination, places, numPeople } = req.body;
+    
+    if (!origin || !destination) {
+      return res.status(400).json({ 
+        error: "Missing parameters. Both origin and destination are required." 
+      });
+    }
+
+    // Default to 2 people if not specified
+    const travelers = numPeople || 2;
+    
+    console.log(`Estimating cost for trip from ${origin} to ${destination} for ${travelers} people`);
+    console.log(`Places to visit: ${places ? places.join(', ') : 'None'}`);
+    
+    // Get cost estimate from Gemini
+    const costEstimate = await getCost(origin, destination, places, travelers);
+    
+    // Return the cost estimate
+    return res.json(costEstimate);
+  } catch (error) {
+    console.error("Error estimating travel cost:", error);
+    return res.status(500).json({ 
+      error: "Failed to estimate travel cost",
+      totalCost: "Unknown"
     });
   }
 });

@@ -7,6 +7,8 @@ import Summary from './components/summary';
 import Questions from './components/query';
 import SavedRoutes from './components/SavedRoutes';
 import TravelPackage from './components/travelpackage';
+import PrebuiltRoute from './components/prebuilt';
+import './design/prebuilt.css'; // Import the CSS for the prebuilt component
 
 
 const AppWrapper = () => {
@@ -30,6 +32,9 @@ const AppWrapper = () => {
     else if(location.pathname==="/packages"){
       setPageClass("package-container");
     }
+    else if(location.pathname==="/prebuilt"){
+      setPageClass("prebuilt-container");
+    }
     else {
       setPageClass(""); // Default class for other pages
     }
@@ -46,6 +51,7 @@ const AppWrapper = () => {
         <Route path="/summary" element={<Summary />} />
         <Route path="/summary/:routeId" element={<Summary />} />
         <Route path="/packages" element={<TravelPackage />} /> 
+        <Route path="/prebuilt" element={<PrebuiltRoute />} />
       </Routes>
     </div>
   );

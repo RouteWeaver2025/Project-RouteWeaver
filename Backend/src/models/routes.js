@@ -21,8 +21,6 @@ const RouteSchema = new mongoose.Schema({
   ],
 });
 
-// Remove any global index on routes.id and replace with a compound index
-// This ensures IDs are unique only within a single user's routes
 RouteSchema.index({ 'user': 1, 'routes.id': 1 }, { unique: true });
 
 const Route = mongoose.model("Route", RouteSchema);

@@ -5,9 +5,10 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "../design/suggest.css";
 import fallbackImg from "../assets/homeimg.jpg";
-import { FiRefreshCw } from 'react-icons/fi';
+import { FiRefreshCw, FiSearch } from 'react-icons/fi';
 import { FaUserCircle } from 'react-icons/fa';
 import { FaArrowLeft } from 'react-icons/fa';
+import axios from 'axios';
 
 // --------------------- GEOCODING ---------------------
 const coordinatesCache = new Map();
@@ -28,177 +29,108 @@ async function getCoordinates(address) {
   }
 }
 
-// --------------------- PLACES ALONG ROUTE ---------------------
-async function getPlacesAlongRoute(geometry, keywords = []) {
+// --------------------- GET PLACES USING GEMINI API ---------------------
+async function getGeminiPlaces(origin, destination, keyword) {
   try {
-    // Ensure we have a valid geometry
-    if (!geometry || geometry.length < 2) {
-      console.warn("Invalid route geometry for place fetching");
-      return [];
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    
+    const response = await axios.post(`${baseUrl}/suggest/suggestions`, {
+      origin,
+      destination,
+      keyword
+    });
+    
+    if (!response.data || !response.data.success) {
+      throw new Error(response.data?.error || 'Failed to get place suggestions');
     }
+    
+    // Process places to match the expected format
+    const set1 = response.data.places.set1.map(place => ({
+      id: `gemini-${place.name.replace(/\s+/g, '-').toLowerCase()}-${Math.random().toString(36).substr(2, 5)}`,
+      name: place.name,
+      lat: place.coordinates.latitude,
+      lon: place.coordinates.longitude,
+      rating: "N/A", // Gemini doesn't provide ratings
+      types: [], // Gemini doesn't provide types
+      vicinity: place.description,
+      photoRef: null, // We'll use imageUrl directly instead
+      imageUrl: place.imageUrl,
+      checked: false // Initialize as unchecked
+    }));
+    
+    const set2 = response.data.places.set2.map(place => ({
+      id: `gemini-${place.name.replace(/\s+/g, '-').toLowerCase()}-${Math.random().toString(36).substr(2, 5)}`,
+          name: place.name,
+      lat: place.coordinates.latitude,
+      lon: place.coordinates.longitude,
+      rating: "N/A", // Gemini doesn't provide ratings
+      types: [], // Gemini doesn't provide types
+      vicinity: place.description,
+      photoRef: null, // We'll use imageUrl directly instead
+      imageUrl: place.imageUrl,
+      checked: false // Initialize as unchecked
+    }));
+    
+    return [...set1, ...set2];
+  } catch (error) {
+    console.error('Error fetching Gemini places:', error);
+    return [];
+  }
+}
+
+// --------------------- GET ROUTE USING OSRM API ---------------------
+async function getOSRMRoute(origin, destination, waypoints = []) {
+  try {
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    
+    const response = await axios.post(`${baseUrl}/suggest/route`, {
+      origin: {
+        latitude: origin.lat,
+        longitude: origin.lon
+      },
+      destination: {
+        latitude: destination.lat,
+        longitude: destination.lon
+      },
+      waypoints: waypoints.map(wp => ({
+        latitude: wp.lat,
+        longitude: wp.lon
+      }))
+    });
+    
+    if (!response.data || !response.data.success) {
+      throw new Error(response.data?.error || 'Failed to get route');
+    }
+    
+    const route = response.data.route;
     
     // Calculate total route length
     let totalDistance = 0;
-    for (let i = 0; i < geometry.length - 1; i++) {
+    for (let i = 0; i < route.geometry.length - 1; i++) {
       totalDistance += calculateDistance(
-        geometry[i][1], geometry[i][0],
-        geometry[i+1][1], geometry[i+1][0]
+        route.geometry[i][1],
+        route.geometry[i][0],
+        route.geometry[i+1][1],
+        route.geometry[i+1][0]
       );
     }
     
     console.log(`Total route distance: ${(totalDistance/1000).toFixed(1)}km`);
     
-    // Adjust sampling strategy based on route length
-    // For longer routes, sample more points and space them more evenly
-    const routeLengthKm = totalDistance / 1000;
-    
-    // Get strategic points along the route - start, middle segments, and end
-    // For longer routes, sample more points
-    const numSamplePoints = routeLengthKm > 250 ? 7 : 
-                           routeLengthKm > 150 ? 5 : 
-                           routeLengthKm > 50 ? 4 : 3;
-    
-    console.log(`Using ${numSamplePoints} sampling points for ${routeLengthKm.toFixed(1)}km route`);
-    
-    // Create evenly distributed points along the route
-    const sampledPoints = [];
-    
-    // Calculate segment length
-    const segmentLength = (geometry.length - 1) / (numSamplePoints - 1);
-    
-    // Sample points at even intervals
-    for (let i = 0; i < numSamplePoints; i++) {
-      // Calculate index
-      const index = Math.min(Math.round(i * segmentLength), geometry.length - 1);
-      sampledPoints.push(geometry[index]);
-    }
-    
-    console.log(`Sampling ${sampledPoints.length} evenly spaced points along the route`);
-    
-    // Generate a random offset for each request to get different places
-    const randomOffset = Math.floor(Math.random() * 1000);
-    
-    // Default tourist keywords if none provided
-    const defaultKeywords = [
-      'tourist_attraction',
-      'natural_feature',
-      'museum',
-      'historic_site',
-      'landmark',
-      'park',
-      'point_of_interest'
-    ];
-    
-    // Use provided keywords or fall back to defaults
-    const searchKeywords = keywords.length > 0 ? keywords : defaultKeywords;
-    console.log('Using search keywords:', searchKeywords);
-    
-    // Add delay between requests to avoid rate limiting
-    const placesPromises = sampledPoints.map(async ([lon, lat], index) => {
-      // Add a small delay between requests
-      if (index > 0) {
-        await new Promise(resolve => setTimeout(resolve, 300));
-      }
+    // Process OSRM response to match expected format
+    if (route && route.routes && route.routes.length > 0) {
+      const routeData = route.routes[0];
       
-      try {
-        console.log(`Fetching places at point ${index + 1}/${sampledPoints.length}: [${lat}, ${lon}]`);
-        const response = await fetch(`http://localhost:5000/api/landmarks/places?lat=${lat}&lng=${lon}&keywords=${searchKeywords.join(',')}&offset=${randomOffset + index}`);
-        const data = await response.json();
-        console.log(`Places found at point ${index + 1}/${sampledPoints.length}: ${data.results?.length || 0}`);
-        return data.results || [];
-      } catch (err) {
-        console.error(`Error fetching places at point ${index + 1}/${sampledPoints.length}:`, err);
-        return [];
-      }
-    });
-    
-    const allPlacesArrays = await Promise.all(placesPromises);
-    
-    // Combine all places and remove duplicates using place_id
-    const uniquePlaces = new Map();
-    allPlacesArrays.flat().forEach(place => {
-      if (!uniquePlaces.has(place.place_id)) {
-        uniquePlaces.set(place.place_id, {
-          id: place.place_id,
-          name: place.name,
-          lat: place.geometry.location.lat,
-          lon: place.geometry.location.lng,
-          rating: place.rating || "N/A",
-          types: place.types || [],
-          vicinity: place.vicinity || "",
-          photoRef: place.photos?.[0]?.photo_reference
-        });
-      }
-    });
-    
-    // Convert to array
-    let places = Array.from(uniquePlaces.values());
-    
-    console.log(`Found ${places.length} unique places before filtering`);
-    
-    if (places.length === 0) {
-      console.warn("No places found from any sampling point");
-      return [];
+      return {
+        distance: routeData.distance,
+        timeTaken: routeData.duration,
+        geometry: routeData.geometry.coordinates,
+        legs: routeData.legs || [],
+        name: 'OSRM Route'
+      };
     }
     
-    // Calculate distance to route for each place
-    places = places.map(place => {
-      try {
-        const distanceToRoute = minDistanceToRoute(place.lat, place.lon, geometry);
-        const position = findPositionAlongRoute(place.lat, place.lon, geometry);
-        return { 
-          ...place, 
-          distanceToRoute: isNaN(distanceToRoute) ? 20000 : distanceToRoute,
-          position: isNaN(position) ? 0.5 : position 
-        };
-      } catch (error) {
-        console.error("Error calculating place metrics:", error);
-        // Default values if calculation fails
-        return { ...place, distanceToRoute: 20000, position: 0.5 };
-      }
-    });
-    
-    // Remove places that are too far from the route (more than 20km)
-    const nearbyPlaces = places.filter(place => place.distanceToRoute < 20000);
-    console.log(`Filtered to ${nearbyPlaces.length} places within 20km of route`);
-    
-    // Use the bin distribution approach to ensure even coverage
-    const distributedPlaces = distributePointsEvenly(nearbyPlaces, 15);
-    
-    console.log(`Final list: ${distributedPlaces.length} unique places distributed along the route`);
-    return distributedPlaces;
-  } catch (error) {
-    console.error('Error fetching places along route:', error);
-    // Return empty array on error
-    return [];
-  }
-}
-
-// Find approximate position along route (0-1)
-function findPositionAlongRoute(lat, lon, routeGeometry) {
-  try {
-    if (!routeGeometry || routeGeometry.length < 2) {
-      return 0.5; // Default to middle if route is invalid
-    }
-    
-    let minDist = Infinity;
-    let closestPointIndex = 0;
-    
-    // Find closest point on route
-    for (let i = 0; i < routeGeometry.length; i++) {
-      const routeLat = routeGeometry[i][1]; // Route points are [lon, lat]
-      const routeLon = routeGeometry[i][0];
-      
-      const dist = calculateDistance(lat, lon, routeLat, routeLon);
-      
-      if (dist < minDist) {
-        minDist = dist;
-        closestPointIndex = i;
-      }
-    }
-    
-    // Return position as percentage along route
-    return closestPointIndex / Math.max(1, routeGeometry.length - 1);
+    throw new Error('No route found in OSRM response');
   } catch (error) {
     console.error("Error in findPositionAlongRoute:", error);
     return 0.5; // Default to middle
@@ -324,45 +256,22 @@ function distanceToLineSegment(px, py, x1, y1, x2, y2) {
     } else if (param > 1) {
       xx = x2;
       yy = y2;
+
     } else {
-      xx = x1 + param * C;
-      yy = y1 + param * D;
+      throw new Error('No route found in OSRM response');
     }
-  
-    // Convert to meters using haversine
-    return calculateDistance(px, py, xx, yy);
   } catch (error) {
-    console.error("Error in distanceToLineSegment:", error);
-    return Infinity;
+    console.error('Error fetching OSRM route:', error);
+    throw error;
   }
 }
 
-// Helper function to calculate distance between two points
+// --------------------- Helper Functions ---------------------
 function calculateDistance(lat1, lon1, lat2, lon2) {
-  // Handle different input formats (coordinate pairs or separate arguments)
-  if (Array.isArray(lat1)) {
-    // Format: calculateDistance([lat1, lon1], [lat2, lon2])
-    lon2 = lat2[1];
-    lat2 = lat2[0];
-    lon1 = lat1[1];
-    lat1 = lat1[0];
-  }
-  
-  // Convert to numbers if they're strings
-  lat1 = parseFloat(lat1);
-  lon1 = parseFloat(lon1);
-  lat2 = parseFloat(lat2);
-  lon2 = parseFloat(lon2);
-  
-  // Validate coordinates
-  if (isNaN(lat1) || isNaN(lon1) || isNaN(lat2) || isNaN(lon2)) {
-    console.warn("Invalid coordinates in distance calculation:", { lat1, lon1, lat2, lon2 });
-    return Infinity;
-  }
-  
-  const R = 6371e3; // Earth's radius in meters
-  const φ1 = lat1 * Math.PI / 180; // lat1 in radians
-  const φ2 = lat2 * Math.PI / 180; // lat2 in radians
+  // Haversine formula for calculating distances between coordinates
+  const R = 6371000; // Earth radius in meters
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
   const Δφ = (lat2 - lat1) * Math.PI / 180;
   const Δλ = (lon2 - lon1) * Math.PI / 180;
 
@@ -371,8 +280,28 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
           Math.sin(Δλ/2) * Math.sin(Δλ/2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
-  return R * c; // Distance in meters
+  return R * c; // distance in meters
 }
+
+// --------------------- Custom Icon for Hovered Place Marker ---------------------
+const hoveredIcon = new L.Icon({
+  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+  shadowSize: [41, 41]
+});
+
+// --------------------- Default Icon ---------------------
+const defaultIcon = new L.Icon({
+  iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+  shadowSize: [41, 41]
+});
 
 // --------------------- BASE ROUTES VIA BACKEND (Google Maps API) ---------------------
 // Fetch multiple routes (time/distance info from Google Maps API) from your backend.
@@ -509,26 +438,15 @@ function RoutePolylines({ routes, selectedIndex }) {
   });
 }
 
-// --------------------- Custom Icon for Hovered Place Marker ---------------------
-const hoveredIcon = L.icon({
-  iconUrl: "/src/assets/marker.png",
-  iconSize: [60, 60],
-  iconAnchor: [30, 60],
-});
-
 // --------------------- MAIN COMPONENT ---------------------
 export default function SuggestPage() {
   const navigate = useNavigate();
   const [originCoords, setOriginCoords] = useState(null);
   const [destCoords, setDestCoords] = useState(null);
-  // Base routes from backend (multi-route view)
-  const [baseRoutes, setBaseRoutes] = useState([]);
-  // When a base route is selected, we fetch places and then recalc viaRoute (single route)
-  const [selectedBaseIndex, setSelectedBaseIndex] = useState(null);
-  // POIs available from the selected base route (rendered as checkboxes)
+  // Places from Gemini API
   const [places, setPlaces] = useState([]);
-  // The via route built from selected (checked) places
-  const [viaRoute, setViaRoute] = useState(null);
+  // The route displayed on the map (initially direct route, then updated with waypoints)
+  const [currentRoute, setCurrentRoute] = useState(null);
   // UI states
   const [hoveredPlace, setHoveredPlace] = useState(null);
   const [showNavOptions, setShowNavOptions] = useState(false);
@@ -537,6 +455,12 @@ export default function SuggestPage() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isLoadingRoutes, setIsLoadingRoutes] = useState(true);
+  const [isLoadingRoute, setIsLoadingRoute] = useState(true);
+  const [baseRoutes, setBaseRoutes] = useState([]);
+  const [selectedBaseIndex, setSelectedBaseIndex] = useState(null);
+  const [viaRoute, setViaRoute] = useState(null);
+  const [costEstimate, setCostEstimate] = useState(null);
+  const [isFetchingCost, setIsFetchingCost] = useState(false);
 
   // Handle sign out functionality
   const handleSignOut = () => {
@@ -559,6 +483,7 @@ export default function SuggestPage() {
   // Read origin, destination, keywords from sessionStorage
   const originStr = sessionStorage.getItem("location") || "Kochi, Kerala";
   const destinationStr = sessionStorage.getItem("destination") || "Thiruvananthapuram, Kerala";
+
   const selectedKeywords = useMemo(() => {
     const raw = sessionStorage.getItem("selectedKeywords");
     if (!raw) {
@@ -622,27 +547,49 @@ export default function SuggestPage() {
     })();
   }, [originStr, destinationStr]);
 
-  // 2) Once coordinates are available, fetch base routes (using Google Maps API from backend)
+  // 2) Once coordinates are available, fetch the direct route
   useEffect(() => {
     if (!originCoords || !destCoords) return;
-    (async () => {
+
+    let isMounted = true;
+
+    async function fetchInitialRoute() {
+      if (!isMounted) return;
+      
+      setIsLoadingRoute(true);
       setIsLoadingRoutes(true);
+      
       try {
-        const routes = await fetchBaseRoutes(originCoords, destCoords);
-        setBaseRoutes(routes);
-        // Make sure we explicitly set to null to prevent automatic selection
-        setSelectedBaseIndex(null);
-        // Clear any existing places and via route
-        setPlaces([]);
-        setViaRoute(null);
-        // Reset fetch tracker
-        setFetchedForIndex(null);
+        // Get direct route between origin and destination
+        const route = await getOSRMRoute(originCoords, destCoords);
+        if (isMounted) {
+          setCurrentRoute(route);
+          
+          // Fetch base routes
+          const routes = await fetchBaseRoutes(originCoords, destCoords);
+          setBaseRoutes(routes);
+          setSelectedBaseIndex(null);
+          setPlaces([]);
+          setViaRoute(null);
+          setFetchedForIndex(null);
+        }
       } catch (err) {
-        console.error("Error fetching base routes:", err);
+        if (isMounted) {
+          console.error("Error in fetchInitialRoute:", err);
+        }
       } finally {
-        setIsLoadingRoutes(false);
+        if (isMounted) {
+          setIsLoadingRoute(false);
+          setIsLoadingRoutes(false);
+        }
       }
-    })();
+    }
+
+    fetchInitialRoute();
+
+    return () => {
+      isMounted = false;
+    };
   }, [originCoords, destCoords]);
 
   // 3) When a base route is selected, fetch places for that route's geometry.
@@ -652,48 +599,80 @@ export default function SuggestPage() {
     if (fetchedForIndex === selectedBaseIndex) return; // already fetched for this route
     const chosen = baseRoutes[selectedBaseIndex];
     if (!chosen || !chosen.geometry) return;
-    (async () => {
+    
+    const fetchPlaces = async () => {
       setLoadingPlaces(true);
       try {
-        const foundPlaces = await getPlacesAlongRoute(chosen.geometry, selectedKeywords);
-        // Set each fetched place to unchecked by default
-        const placesWithCheck = foundPlaces.map(p => ({ ...p, checked: false }));
-        setPlaces(placesWithCheck);
+        const geminiPlaces = await getGeminiPlaces(originStr, destinationStr, selectedKeywords);
+        setPlaces(geminiPlaces);
         setFetchedForIndex(selectedBaseIndex);
       } catch (err) {
         console.error("Error fetching places:", err);
       } finally {
         setLoadingPlaces(false);
       }
-    })();
-  }, [selectedBaseIndex, baseRoutes, selectedKeywords, fetchedForIndex]);
+    };
+    
+    fetchPlaces();
+  }, [selectedBaseIndex, baseRoutes, originStr, destinationStr, selectedKeywords, fetchedForIndex]);
 
-  // 4) When the user toggles place checkboxes, recalc the final route (via route).
+  // 3) When places are toggled, update the route
   useEffect(() => {
-    async function updateRoute() {
+    async function updateRouteWithSelectedPlaces() {
       if (!originCoords || !destCoords) return;
-      if (selectedBaseIndex === null || selectedBaseIndex >= baseRoutes.length) return;
-      const chosen = baseRoutes[selectedBaseIndex];
-      if (!chosen) return;
+      
       const selectedPlaces = places.filter(p => p.checked);
+      
       if (selectedPlaces.length === 0) {
-        setViaRoute({
-          timeTaken: chosen.timeTaken,
-          distance: chosen.distance,
-          geometry: chosen.geometry
-        });
-      } else {
+        // If no places selected, get the direct route
         try {
-          const single = await fetchRouteWithPlaces(originCoords, destCoords, selectedPlaces);
-          setViaRoute(single);
+          const directRoute = await getOSRMRoute(originCoords, destCoords);
+          setCurrentRoute(directRoute);
         } catch (err) {
-          console.error("Error fetching route with places:", err);
-          setViaRoute(null);
+          console.error("Error fetching direct route:", err);
+        }
+      } else {
+        // If places are selected, get route with waypoints
+        try {
+          // Sort places by distance from origin for more efficient routing
+          const sortedPlaces = sortPlacesByDistanceFromOrigin(selectedPlaces, originCoords);
+          console.log("Places sorted by distance from origin:", sortedPlaces.map(p => p.name));
+          
+          const routeWithWaypoints = await getOSRMRoute(
+            originCoords, 
+            destCoords, 
+            sortedPlaces
+          );
+          setCurrentRoute(routeWithWaypoints);
+        } catch (err) {
+          console.error("Error fetching route with waypoints:", err);
         }
       }
     }
-    updateRoute();
-  }, [originCoords, destCoords, baseRoutes, selectedBaseIndex, places]);
+    
+    updateRouteWithSelectedPlaces();
+  }, [places, originCoords, destCoords]);
+
+  // Helper function to sort places by distance from origin
+  function sortPlacesByDistanceFromOrigin(places, originCoords) {
+    if (!places || !places.length || !originCoords) return places;
+    
+    // Calculate distances from origin
+    const placesWithDistances = places.map(place => {
+      const distance = calculateDistance(
+        originCoords.lat, 
+        originCoords.lon, 
+        place.lat, 
+        place.lon
+      );
+      return { ...place, distanceFromOrigin: distance };
+    });
+    
+    // Sort places by distance from origin
+    placesWithDistances.sort((a, b) => a.distanceFromOrigin - b.distanceFromOrigin);
+    
+    return placesWithDistances;
+  }
 
   // Handler for selecting a base route (phase 1 -> phase 2)
   function handleBaseRouteSelect(idx) {
@@ -732,7 +711,7 @@ export default function SuggestPage() {
     setFetchedForIndex(null); // This will trigger the useEffect to fetch places again
   }
 
-  // Navigation options: Build external map URLs including waypoints from checked places.
+  // Build URL for Google Maps navigation
   function buildGoogleMapsUrl() {
     try {
       // Default URL without waypoints
@@ -783,21 +762,39 @@ export default function SuggestPage() {
       )}&destination=${encodeURIComponent(destinationStr)}&travelmode=driving`;
     }
   }
+
   function buildAppleMapsUrl() {
     return `https://maps.apple.com/?saddr=${encodeURIComponent(
       originStr
     )}&daddr=${encodeURIComponent(destinationStr)}&dirflg=d`;
   }
-  function buildWazeUrl() {
-    if (destCoords)
-      return `https://waze.com/ul?ll=${destCoords.lat},${destCoords.lon}&navigate=yes`;
-    return "https://waze.com";
-  }
-  const handleNavigateClick = () => {
+
+  const handleNavigateClick = async () => {
     // When opening nav options, pre-generate URLs for debugging
     if (!showNavOptions) {
       console.log("Navigation options opened");
       console.log("Selected places:", places.filter(p => p.checked).map(p => p.name));
+      
+      // Fetch cost estimate if not already fetched
+      if (!costEstimate && !isFetchingCost) {
+        setIsFetchingCost(true);
+        
+        try {
+          const selectedPlaces = places.filter(p => p.checked);
+          const costData = await fetchTravelCost(
+            originStr, 
+            destinationStr,
+            selectedPlaces,
+            2 // Default to 2 people
+          );
+          
+          setCostEstimate(costData);
+        } catch (error) {
+          console.error("Error fetching cost estimate:", error);
+        } finally {
+          setIsFetchingCost(false);
+        }
+      }
     }
     setShowNavOptions(!showNavOptions);
   };
@@ -892,12 +889,40 @@ export default function SuggestPage() {
   function handleOptionClick(url) {
     console.log("Opening external navigation with URL:", url);
     window.open(url, "_blank");
+    setShowNavOptions(false);
   }
 
   // Updated Back button handler that always navigates to queries page
   const handleBackButtonClick = () => {
     navigate('/queries');
   };
+
+  // Helper function to get place image URL
+  function getPlaceImageUrl(place) {
+    if (place.imageUrl) return place.imageUrl;
+    if (place.photoRef) {
+      return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${place.photoRef}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`;
+    }
+    return fallbackImg;
+  }
+
+  // Helper function to fetch travel cost
+  async function fetchTravelCost(origin, destination, places, numPeople) {
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await axios.post(`${baseUrl}/travel/cost`, {
+        origin,
+        destination,
+        places: places.map(p => p.name),
+        numPeople
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching travel cost:", error);
+      return { error: "Failed to estimate cost", totalCost: "Unknown" };
+    }
+  }
 
   return (
     <div className="suggest-container">
@@ -1025,8 +1050,7 @@ export default function SuggestPage() {
         </div>
         <div className="map-area">
           {originCoords && destCoords && (
-            selectedBaseIndex === null ? (
-              // Phase 1: Multi-route view (baseRoutes)
+            currentRoute ? (
               <MapContainer
                 center={[originCoords.lat, originCoords.lon]}
                 zoom={7}
@@ -1036,7 +1060,9 @@ export default function SuggestPage() {
                   attribution='&copy; OpenStreetMap contributors'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-                <RoutePolylines routes={baseRoutes} selectedIndex={0} />
+                {currentRoute && (
+                  <RoutePolylines routes={[currentRoute]} selectedIndex={0} />
+                )}
                 {originCoords && <Marker position={[originCoords.lat, originCoords.lon]} />}
                 {destCoords && <Marker position={[destCoords.lat, destCoords.lon]} />}
                 {hoveredPlace && (
@@ -1044,23 +1070,22 @@ export default function SuggestPage() {
                 )}
               </MapContainer>
             ) : (
-              // Phase 2: Single route (viaRoute)
-                <MapContainer
-                  center={[originCoords.lat, originCoords.lon]}
-                  zoom={7}
-                  style={{ height: "100%", width: "100%" }}
-                >
-                  <TileLayer
-                    attribution='&copy; OpenStreetMap contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
+              <MapContainer
+                center={[originCoords.lat, originCoords.lon]}
+                zoom={7}
+                style={{ height: "100%", width: "100%" }}
+              >
+                <TileLayer
+                  attribution='&copy; OpenStreetMap contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
                 {viaRoute ? (
                   <RoutePolylines routes={[viaRoute]} selectedIndex={0} />
                 ) : baseRoutes[selectedBaseIndex] ? (
                   <RoutePolylines routes={[baseRoutes[selectedBaseIndex]]} selectedIndex={0} />
                 ) : null}
-                  <Marker position={[originCoords.lat, originCoords.lon]} />
-                  {destCoords && <Marker position={[destCoords.lat, destCoords.lon]} />}
+                <Marker position={[originCoords.lat, originCoords.lon]} />
+                {destCoords && <Marker position={[destCoords.lat, destCoords.lon]} />}
                 {places.filter(p => p.checked).map((place, idx) => (
                   <Marker 
                     key={`place-marker-${idx}`}
@@ -1069,43 +1094,56 @@ export default function SuggestPage() {
                   />
                 ))}
                 {hoveredPlace && !places.find(p => p.id === hoveredPlace.id && p.checked) && (
-                    <Marker position={[hoveredPlace.lat, hoveredPlace.lon]} icon={hoveredIcon} />
-                  )}
-                </MapContainer>
+                  <Marker position={[hoveredPlace.lat, hoveredPlace.lon]} icon={hoveredIcon} />
+                )}
+              </MapContainer>
             )
           )}
           {hoveredPlace && (
             <div className="hoverbox">
               <div className="hoverbox-image-container">
-                {hoveredPlace.photoRef ? (
-                  <img
-                    src={`https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=${hoveredPlace.photoRef}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`}
-                    alt={hoveredPlace.name}
-                    onError={e => { e.currentTarget.src = fallbackImg; }}
-                  />
-                ) : (
-                  <img src={fallbackImg} alt="Fallback" />
-                )}
+                <img
+                  src={getPlaceImageUrl(hoveredPlace)}
+                  alt={hoveredPlace.name}
+                  onError={e => { e.currentTarget.src = fallbackImg; }}
+                />
               </div>
               <div className="hoverbox-info">
                 <p className="hoverbox-name">{hoveredPlace.name}</p>
                 <p className="hoverbox-meta">
-                  ⭐ {hoveredPlace.rating} | 📍 {hoveredPlace.vicinity || ""}
+                  {hoveredPlace.vicinity || hoveredPlace.description || ""}
                 </p>
               </div>
             </div>
           )}
           {showNavOptions && (
-            <NavBox
-              origin={originStr}
-              destination={destinationStr}
-              destCoords={destCoords}
-              places={places}
-              buildGoogleMapsUrl={buildGoogleMapsUrl}
-              buildAppleMapsUrl={buildAppleMapsUrl}
-              buildWazeUrl={buildWazeUrl}
-              handleOptionClick={handleOptionClick}
-            />
+    <div className="navbox">
+      <p className="navbox-title">Open in:</p>
+      
+      {/* Cost estimate section */}
+      <div className="cost-estimate">
+        <p>Approximate Cost</p>
+        {isFetchingCost ? (
+          <p>Calculating...</p>
+        ) : costEstimate ? (
+          <div className="cost-value">
+            {costEstimate.error ? 'Unable to calculate' : costEstimate.totalCost}
+            {costEstimate.note && <p className="cost-note">{costEstimate.note}</p>}
+          </div>
+        ) : (
+          <p>Not available</p>
+        )}
+      </div>
+      
+      <div className="navbox-options">
+        <button className="navbox-option" onClick={() => handleOptionClick(buildGoogleMapsUrl())}>
+          Google Maps
+        </button>
+        <button className="navbox-option" onClick={() => handleOptionClick(buildAppleMapsUrl())}>
+          Apple Maps
+        </button>
+      </div>
+    </div>
           )}
         </div>
       </div>
@@ -1133,4 +1171,3 @@ function NavBox({ buildGoogleMapsUrl, buildAppleMapsUrl, handleOptionClick }) {
     </div>
   );
 }
-/*⬆️ exactly 1000 lines of code */

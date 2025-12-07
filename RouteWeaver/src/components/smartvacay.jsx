@@ -18,6 +18,9 @@ const SmartVacay = ({ currentMonth, currentYear, holidays, location }) => {
   const [tripLength, setTripLength] = useState(0);
   const [destinationSuggestions, setDestinationSuggestions] = useState([]);
   const [selectedDestination, setSelectedDestination] = useState(null);
+  const [refreshCount, setRefreshCount] = useState(0);
+  const [allFetchedDestinations, setAllFetchedDestinations] = useState([]);
+  const [currentDestinationSet, setCurrentDestinationSet] = useState(0); // 0 = first set, 1 = second set
 
   // Function to determine if a date is a weekend
   const isWeekend = (year, month, day) => {
@@ -83,6 +86,14 @@ const SmartVacay = ({ currentMonth, currentYear, holidays, location }) => {
       if (dates[i].day === dates[i-1].day + 1) {
         // These days are consecutive
         currentGroup.push(dates[i]);
+        
+        // Limit to max 2 days per group
+        if (currentGroup.length === 2) {
+          consecutiveGroups.push([...currentGroup]);
+          currentGroup = [];
+          // Skip to next day
+          continue;
+        }
       } else {
         // Start a new group
         if (currentGroup.length > 0) {
@@ -97,108 +108,193 @@ const SmartVacay = ({ currentMonth, currentYear, holidays, location }) => {
       consecutiveGroups.push(currentGroup);
     }
 
+    // Also add individual days as 1-day trips
+    for (let i = 0; i < dates.length; i++) {
+      // Skip if this day is already part of a 2-day group
+      if (consecutiveGroups.some(group => 
+        group.length > 1 && group.some(d => d.day === dates[i].day)
+      )) {
+        continue;
+      }
+      
+      // Add as a single-day trip
+      consecutiveGroups.push([dates[i]]);
+    }
+
     return consecutiveGroups;
   };
 
-  // Function to determine distance range based on consecutive days
-  const getDistanceRange = (daysCount) => {
-    if (daysCount === 1) {
-      return { min: 50, max: 200 }; // 50-200 km for single day trips
-    } else if (daysCount === 2) {
-      return { min: 150, max: 400 }; // 150-400 km for 2-day trips
-    } else if (daysCount <= 4) {
-      return { min: 300, max: 800 }; // 300-800 km for 3-4 day trips
-    } else {
-      return { min: 500, max: 2000 }; // 500+ km for longer trips
-    }
-  };
-
-  // Fetch destinations from API based on trip length
-  async function fetchDestinations(location, tripLength) {
+  // Function to fetch vacation destinations from the new backend endpoint
+  const fetchVacayDestinations = async (location, days = 2) => {
     if (!location) {
-      console.error("Location is required to fetch destinations");
+      console.error("Location is required to fetch vacation destinations");
       return [];
     }
 
     setIsLoadingDestinations(true);
     setDestinationsError(null);
     
-    // Determine trip type based on trip length
-    let tripType = "medium";
-    if (tripLength <= 2) {
-      tripType = "short"; 
-    } else if (tripLength <= 4) {
-      tripType = "medium";
-    } else {
-      tripType = "long";
-    }
-    
-    console.log(`Fetching ${tripType} trip destinations for ${location}`);
-    
     try {
-      // Use the correct API URL
       const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const response = await fetch(
-        `${baseUrl}/api/landmarks/vacationDestinations?location=${encodeURIComponent(location)}&tripType=${tripType}`
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `HTTP error ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log("Received destinations:", data.destinations);
+      console.log(`Fetching vacation destinations for ${location} with ${days} trip days`);
       
-      return data.destinations || [];
+      const response = await axios.get(`${baseUrl}/smartvacay/suggestions`, {
+        params: { 
+          location,
+          tripDays: days 
+        }
+      });
+      
+      if (response.data.success) {
+        // Combine short, medium, and long distance places
+        const allDestinations = [
+          ...(response.data.shortDistance || []).map(place => ({
+            ...place,
+            distanceType: 'short'
+          })),
+          ...(response.data.mediumDistance || []).map(place => ({
+            ...place,
+            distanceType: 'medium'
+          })),
+          ...(response.data.longDistance || []).map(place => ({
+            ...place,
+            distanceType: 'long'
+          }))
+        ];
+        
+        // Format the destinations to match our expected format
+        const formattedDestinations = allDestinations.map(place => ({
+          name: place.name,
+          description: place.description,
+          distance: extractDistanceFromDescription(place.description) || 100, // fallback distance
+          lat: place.coordinates.latitude,
+          lng: place.coordinates.longitude,
+          distanceType: place.distanceType
+        }));
+        
+        // Limit to 4 destinations for display, but make sure we include a mix of distances
+        // based on the trip duration
+        return selectOptimalDestinations(formattedDestinations, days);
+      } else {
+        throw new Error(response.data.error || "Failed to fetch destinations");
+      }
     } catch (error) {
-      console.error("Error fetching destinations:", error);
+      console.error("Error fetching vacation destinations:", error);
       setDestinationsError("Failed to fetch destinations. Using backup options.");
       
       // Fall back to hardcoded options if API fails
-      return getFallbackDestinations(tripType);
+      return getFallbackDestinations(days);
     } finally {
       setIsLoadingDestinations(false);
     }
-  }
+  };
 
-  // Fallback destinations when API fails
-  function getFallbackDestinations(tripType) {
-    // Make sure tripType is a string to avoid undefined issues
-    const tripTypeStr = String(tripType || "").toLowerCase();
+  // Helper function to extract distance from description
+  const extractDistanceFromDescription = (description) => {
+    if (!description) return null;
     
-    const fallbacks = {
-      short: [
-        { name: "Munnar, Kerala", distance: 70, coords: { lat: 10.0889, lng: 77.0595 } },
-        { name: "Coorg, Karnataka", distance: 120, coords: { lat: 12.4244, lng: 75.7382 } },
-        { name: "Pondicherry", distance: 150, coords: { lat: 11.9416, lng: 79.8083 } },
-      ],
-      medium: [
-        { name: "Goa", distance: 250, coords: { lat: 15.2993, lng: 74.1240 } },
-        { name: "Ooty, Tamil Nadu", distance: 200, coords: { lat: 11.4102, lng: 76.6950 } },
-        { name: "Varanasi, Uttar Pradesh", distance: 300, coords: { lat: 25.3176, lng: 82.9739 } },
-      ],
-      long: [
-        { name: "Shimla, Himachal Pradesh", distance: 450, coords: { lat: 31.1048, lng: 77.1734 } },
-        { name: "Jaipur, Rajasthan", distance: 500, coords: { lat: 26.9124, lng: 75.7873 } },
-        { name: "Manali, Himachal Pradesh", distance: 480, coords: { lat: 32.2432, lng: 77.1892 } },
-      ]
-    };
+    const matches = description.match(/(\d+(?:\.\d+)?)\s*km/i);
+    if (matches && matches[1]) {
+      return parseFloat(matches[1]);
+    }
+    return null;
+  };
+
+  // Helper function to select optimal mix of destinations based on trip duration and distance
+  const selectOptimalDestinations = (destinations, days) => {
+    // Group destinations by type
+    const shortDist = destinations.filter(d => d.distanceType === 'short');
+    const mediumDist = destinations.filter(d => d.distanceType === 'medium');
+    const longDist = destinations.filter(d => d.distanceType === 'long');
     
-    // Determine which category to use based on trip length (if numeric) or type string
-    let category = 'medium'; // Default to medium
+    // Sort each group by actual distance
+    shortDist.sort((a, b) => a.distance - b.distance);
+    mediumDist.sort((a, b) => a.distance - b.distance);
+    longDist.sort((a, b) => a.distance - b.distance);
     
-    if (tripTypeStr === 'short' || tripTypeStr === '1' || tripTypeStr === '2' || parseInt(tripTypeStr) <= 2) {
-      category = 'short';
-    } else if (tripTypeStr === 'medium' || tripTypeStr === '3' || tripTypeStr === '4' || (parseInt(tripTypeStr) > 2 && parseInt(tripTypeStr) <= 4)) {
-      category = 'medium';
-    } else if (tripTypeStr === 'long' || tripTypeStr === '5' || parseInt(tripTypeStr) > 4) {
-      category = 'long';
+    let firstSet = [];
+    let secondSet = [];
+    
+    if (days === 1) {
+      // 1-day trip: Focus on closer destinations (up to ~100km)
+      // First set: 3 short, 1 medium
+      firstSet = [
+        ...shortDist.filter(d => d.distance <= 80).slice(0, 3),
+        ...mediumDist.filter(d => d.distance <= 100).slice(0, 1)
+      ];
+      // Second set: 2 short, 2 medium (slightly farther but still doable in a day)
+      secondSet = [
+        ...shortDist.filter(d => d.distance <= 80).slice(3, 5),
+        ...mediumDist.filter(d => d.distance <= 100).slice(1, 3)
+      ];
+    } else {
+      // 2-day trip: Include medium to longer distances (100-400km)
+      // First set: 1 short, 2 medium, 1 long
+      firstSet = [
+        ...shortDist.slice(0, 1),
+        ...mediumDist.filter(d => d.distance > 100 && d.distance <= 200).slice(0, 2),
+        ...longDist.filter(d => d.distance > 200 && d.distance <= 400).slice(0, 1)
+      ];
+      // Second set: 1 medium, 3 long
+      secondSet = [
+        ...mediumDist.filter(d => d.distance > 100 && d.distance <= 200).slice(2, 3),
+        ...longDist.filter(d => d.distance > 200 && d.distance <= 400).slice(1, 4)
+      ];
     }
     
-    console.log(`Getting fallback destinations for trip type: ${tripTypeStr} (using category: ${category})`);
+    // Fill sets if they don't have enough destinations
+    const fillSet = (set, targetCount) => {
+      if (set.length >= targetCount) return set.slice(0, targetCount);
+      
+      // Combined leftover destinations that aren't in this set
+      const allLeftovers = [
+        ...shortDist.filter(d => !set.some(s => s.name === d.name)),
+        ...mediumDist.filter(d => !set.some(s => s.name === d.name)),
+        ...longDist.filter(d => !set.some(s => s.name === d.name))
+      ];
+      
+      // Add enough to reach the target count
+      return [...set, ...allLeftovers.slice(0, targetCount - set.length)].slice(0, targetCount);
+    };
     
-    return fallbacks[category] || fallbacks.medium;
+    firstSet = fillSet(firstSet, 4);
+    secondSet = fillSet(secondSet, 4);
+    
+    // Make sure destinations in second set aren't duplicates of first set
+    secondSet = secondSet.filter(d => !firstSet.some(f => f.name === d.name));
+    secondSet = fillSet(secondSet, 4);
+    
+    // Return both sets, 8 destinations total
+    return [...firstSet, ...secondSet];
+  };
+
+  // Fallback destinations when API fails - adjusted for trip duration
+  function getFallbackDestinations(days = 2) {
+    // Default fallbacks for different trip durations
+    const shortTrips = [
+      { name: "Wagamon, Kerala", description: "Hill station at 35 km", distance: 35, lat: 9.6867, lng: 76.9344, distanceType: 'short' },
+      { name: "Peerumedu, Kerala", description: "Hill station at 50 km", distance: 50, lat: 9.5722, lng: 77.0215, distanceType: 'short' },
+      { name: "Vazhikkadavu, Kerala", description: "Scenic village at 65 km", distance: 65, lat: 9.7211, lng: 77.1231, distanceType: 'short' },
+      { name: "Munnar, Kerala", description: "Hill station at 85 km", distance: 85, lat: 10.0889, lng: 77.0595, distanceType: 'medium' }
+    ];
+    
+    const mediumTrips = [
+      { name: "Vagamon, Kerala", description: "Hill station at 45 km", distance: 45, lat: 9.6867, lng: 76.9344, distanceType: 'short' },
+      { name: "Munnar, Kerala", description: "Hill station at 85 km", distance: 85, lat: 10.0889, lng: 77.0595, distanceType: 'medium' },
+      { name: "Thekkady, Kerala", description: "Wildlife sanctuary at 110 km", distance: 110, lat: 9.5833, lng: 77.1667, distanceType: 'medium' },
+      { name: "Alleppey, Kerala", description: "Backwaters at 150 km", distance: 150, lat: 9.4981, lng: 76.3388, distanceType: 'long' }
+    ];
+    
+    const longTrips = [
+      { name: "Munnar, Kerala", description: "Hill station at 85 km", distance: 85, lat: 10.0889, lng: 77.0595, distanceType: 'medium' },
+      { name: "Thekkady, Kerala", description: "Wildlife sanctuary at 110 km", distance: 110, lat: 9.5833, lng: 77.1667, distanceType: 'medium' },
+      { name: "Wayanad, Kerala", description: "Hill district at 250 km", distance: 250, lat: 11.6854, lng: 76.1320, distanceType: 'long' },
+      { name: "Kovalam, Kerala", description: "Beach resort at 285 km", distance: 285, lat: 8.4004, lng: 76.9787, distanceType: 'long' }
+    ];
+    
+    if (days <= 2) return shortTrips;
+    if (days <= 4) return mediumTrips;
+    return longTrips;
   }
 
   // Function to fetch vacation suggestions
@@ -217,19 +313,38 @@ const SmartVacay = ({ currentMonth, currentYear, holidays, location }) => {
         return;
       }
       
-      // Find consecutive date groups
+      // Find consecutive date groups (now limited to 1-2 days)
       const consecutiveGroups = findConsecutiveDates(availableDates);
       
-      // Randomly select up to 4 date groups (prioritize longer durations)
-      const sortedGroups = [...consecutiveGroups].sort((a, b) => b.length - a.length);
-      const selectedGroups = sortedGroups.slice(0, Math.min(4, sortedGroups.length));
+      // Sort by day (to ensure variety in dates) then select several
+      // This ensures we don't always use the same date range for all suggestions
+      const sortedGroups = [...consecutiveGroups].sort((a, b) => a[0].day - b[0].day);
       
-      // Fetch destinations for each selected group
-      const suggestions = await Promise.all(
-        selectedGroups.map(async (group) => {
-          const daysCount = group.length;
-          const distanceRange = getDistanceRange(daysCount);
-          
+      // Select a variety of 1-day and 2-day periods spaced throughout the month
+      const twoDay = sortedGroups.filter(g => g.length === 2).slice(0, 2); // Take 2 two-day periods
+      const oneDay = sortedGroups.filter(g => g.length === 1)
+        .filter(g => !twoDay.some(td => td.some(d => Math.abs(d.day - g[0].day) <= 3))) // Not too close to 2-day periods
+        .slice(0, 3); // Take up to 3 one-day periods
+        
+      const selectedGroups = [...twoDay, ...oneDay].sort((a, b) => a[0].day - b[0].day);
+      
+      // Create array of destinations for each group based on trip duration
+      const destinationsPromises = selectedGroups.map(async (group) => {
+        // Get number of days for this group
+        const daysCount = group.length;
+        return await fetchVacayDestinations(startingLocation, daysCount);
+      });
+      
+      // Wait for all destination queries to complete
+      const destinationsResults = await Promise.all(destinationsPromises);
+      
+      // Store all destinations for each group
+      const allGroupDestinations = destinationsResults.map((destinations, index) => {
+        const group = selectedGroups[index];
+        const daysCount = group.length;
+        
+        // Map each destination to a suggestion object
+        return destinations.map(destination => {
           // Format the date range
           const startDate = new Date(currentYear, currentMonth, group[0].day);
           const endDate = new Date(currentYear, currentMonth, group[group.length - 1].day);
@@ -249,71 +364,67 @@ const SmartVacay = ({ currentMonth, currentYear, holidays, location }) => {
             startDateStr : 
             `${startDateStr} - ${endDateStr}`;
           
-          try {
-            // Fetch destination from backend
-            const response = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/landmarks/popularDestinations`, {
-              params: {
-                origin: location,
-                minDistance: distanceRange.min,
-                maxDistance: distanceRange.max,
-                limit: 1
-              }
-            });
-            
-            // Properly handle the destination data
-            let destination;
-            if (response.data && response.data.destinations && response.data.destinations.length > 0) {
-              destination = response.data.destinations[0];
-              console.log("Received destination:", destination);
-            } else {
-              // If no destination was found, create a fallback with a real place name
-              // Get fallback destinations for this trip length
-              const fallbackDestinations = getFallbackDestinations(daysCount);
-              // Select a random destination from the array
-              const randomIndex = Math.floor(Math.random() * fallbackDestinations.length);
-              destination = fallbackDestinations[randomIndex];
-              
-              console.warn("No destinations returned from API, using fallback destination:", destination.name);
-            }
-            
-            return {
-              id: `${startDate.getTime()}-${endDate.getTime()}`,
-              dates: dateText,
-              days: daysCount,
-              destination: destination.name,
-              distance: destination.distance,
-              description: group.map(d => d.description).join(', '),
-              startDate: startDate.toISOString().split('T')[0],
-              endDate: endDate.toISOString().split('T')[0],
-              origin: location,
-              coords: destination.coords || null
-            };
-          } catch (error) {
-            console.error('Error fetching destination:', error);
-            
-            // Create a fallback destination with a real place name
-            const fallbackDestinations = getFallbackDestinations(daysCount);
-            // Select a random destination from the array
-            const randomIndex = Math.floor(Math.random() * fallbackDestinations.length);
-            const fallbackDestination = fallbackDestinations[randomIndex];
-            
-            return {
-              id: `${startDate.getTime()}-${endDate.getTime()}`,
-              dates: dateText,
-              days: daysCount,
-              destination: fallbackDestination.name,
-              distance: fallbackDestination.distance,
-              description: 'Could not fetch destination details',
-              startDate: startDate.toISOString().split('T')[0],
-              endDate: endDate.toISOString().split('T')[0],
-              origin: location,
-              coords: fallbackDestination.coords || null
-            };
+          // For 1-day trips, prefer destinations under 100km
+          // For 2-day trips, prefer destinations between 100-400km
+          let distanceScore = 0;
+          if (daysCount === 1 && destination.distance <= 100) {
+            distanceScore = 100 - destination.distance; // Higher score for closer places on 1-day trips
+          } else if (daysCount === 2 && destination.distance > 100 && destination.distance <= 400) {
+            distanceScore = 400 - Math.abs(250 - destination.distance); // Score peaks around 250km for 2-day trips
           }
-        })
-      );
+          
+          return {
+            id: `${startDate.getTime()}-${endDate.getTime()}-${destination.name}`,
+            dates: dateText,
+            days: daysCount,
+            destination: destination.name,
+            distance: destination.distance,
+            description: group.map(d => d.description).join(', '),
+            startDate: startDate.toISOString().split('T')[0],
+            endDate: endDate.toISOString().split('T')[0],
+            origin: startingLocation,
+            coords: {
+              lat: destination.lat,
+              lng: destination.lng
+            },
+            distanceScore // Used for sorting
+          };
+        });
+      }).flat(); // Flatten the array of arrays
       
-      setVacationSuggestions(suggestions);
+      // Sort all destinations by distanceScore to ensure best matches for each day count
+      allGroupDestinations.sort((a, b) => b.distanceScore - a.distanceScore);
+      
+      // Process all destination sets into two distinct sets of suggestions
+      const oneDaySuggestions = allGroupDestinations.filter(s => s.days === 1).slice(0, 8);
+      const twoDaySuggestions = allGroupDestinations.filter(s => s.days === 2).slice(0, 8);
+      
+      // We want a mix of 1-day and 2-day trips in each set
+      const allSuggestions = [];
+      
+      // Add 1-day suggestions (half to set 0, half to set 1)
+      const midOneDay = Math.floor(oneDaySuggestions.length / 2);
+      oneDaySuggestions.slice(0, midOneDay).forEach(s => allSuggestions.push({...s, set: 0}));
+      oneDaySuggestions.slice(midOneDay).forEach(s => allSuggestions.push({...s, set: 1}));
+      
+      // Add 2-day suggestions (half to set 0, half to set 1)
+      const midTwoDay = Math.floor(twoDaySuggestions.length / 2);
+      twoDaySuggestions.slice(0, midTwoDay).forEach(s => allSuggestions.push({...s, set: 0}));
+      twoDaySuggestions.slice(midTwoDay).forEach(s => allSuggestions.push({...s, set: 1}));
+      
+      // Store all fetched destinations
+      setAllFetchedDestinations(allSuggestions);
+      
+      // Show the first set of destinations initially
+      setCurrentDestinationSet(0);
+      const firstSetSuggestions = allSuggestions
+        .filter(s => s.set === 0)
+        .slice(0, 4);
+        
+      setVacationSuggestions(firstSetSuggestions);
+      
+      // Reset refresh count
+      setRefreshCount(0);
     } catch (error) {
       console.error('Error generating vacation suggestions:', error);
       setError('Failed to generate vacation suggestions');
@@ -322,93 +433,194 @@ const SmartVacay = ({ currentMonth, currentYear, holidays, location }) => {
     }
   };
 
-  // Handle suggestion click to navigate to summary
-  const handleSuggestionClick = (suggestion) => {
-    // Store suggestion data in sessionStorage for the summary page
-    sessionStorage.setItem('vacayTrip', JSON.stringify({
-      origin: suggestion.origin,
-      destination: suggestion.destination,
-      startDate: suggestion.startDate,
-      endDate: suggestion.endDate,
-      days: suggestion.days,
-      distance: suggestion.distance,
-      coords: suggestion.coords
-    }));
-    
-    // Navigate to summary page with special parameter
-    navigate('/summary/vacay');
+  // Handle suggestion click to navigate to prebuilt route
+  const handleSuggestionClick = async (suggestion) => {
+    try {
+      // Get coordinates for the origin
+      let originCoords = null;
+      
+      // Try to get coordinates from Nominatim
+      if (suggestion.origin) {
+        console.log(`Getting coordinates for origin: ${suggestion.origin}`);
+        
+        // Add Kerala, India to improve geocoding accuracy if not already included
+        const searchQuery = suggestion.origin.toLowerCase().includes('kerala') ? 
+          suggestion.origin : 
+          `${suggestion.origin}, Kerala, India`;
+        
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1`);
+        const data = await response.json();
+        
+        if (data && data.length > 0) {
+          originCoords = {
+            lat: parseFloat(data[0].lat),
+            lng: parseFloat(data[0].lon)
+          };
+          console.log("Retrieved origin coordinates:", originCoords);
+          
+          // Validate the coordinates
+          if (isNaN(originCoords.lat) || isNaN(originCoords.lng) ||
+              Math.abs(originCoords.lat) < 0.1 && Math.abs(originCoords.lng) < 0.1) {
+            console.error("Invalid coordinates received from Nominatim");
+            originCoords = null;
+          }
+        }
+      }
+      
+      // If we couldn't get valid coordinates, use a fallback for Kerala
+      if (!originCoords) {
+        console.warn("Using fallback coordinates for Kerala");
+        originCoords = {
+          lat: 10.8505, // Fallback to central Kerala coordinates
+          lng: 76.2711
+        };
+      }
+      
+      // Log for debugging
+      console.log("Final originCoords being stored:", originCoords);
+      console.log("Destination coords being stored:", suggestion.coords);
+      
+      // Store suggestion data in sessionStorage for the prebuilt page to use
+      sessionStorage.setItem('packageTrip', JSON.stringify({
+        origin: suggestion.origin,
+        destination: suggestion.destination,
+        startDate: suggestion.startDate,
+        endDate: suggestion.endDate,
+        days: suggestion.days,
+        distance: suggestion.distance,
+        originCoords: originCoords,
+        destinationCoords: suggestion.coords // Rename to be consistent with travelpackage.jsx
+      }));
+      
+      // Navigate to prebuilt route page
+      navigate('/prebuilt');
+    } catch (error) {
+      console.error("Error getting origin coordinates:", error);
+      alert("There was an issue getting coordinates for your trip. Please try again.");
+    }
   };
 
-  // Effect to handle vacation suggestions when dates or location changes
+  // Effect to fetch vacation suggestions when location changes
   useEffect(() => {
-    // Skip if incomplete data
-    if (!startDate || !endDate || !startingLocation) {
-      setDestinationSuggestions([]);
-      setSelectedDestination(null);
-      return;
+    if (startingLocation) {
+      fetchVacationSuggestions();
     }
+  }, [startingLocation, currentMonth, currentYear]);
 
-    // Calculate vacation days
-    const days = calculateTripDays(startDate, endDate);
-    setTripLength(days);
-
-    // Get vacation suggestions
-    fetchVacationSuggestions();
-  }, [startDate, endDate, startingLocation]);
-
-  // New effect to fetch destinations when location and trip length change
+  // Handle location from sessionStorage
   useEffect(() => {
-    // Only fetch destinations when we have a starting location and valid trip length
-    if (startingLocation && tripLength > 0) {
-      // Fetch destinations from API
-      fetchDestinations(startingLocation, tripLength)
-        .then(destinationOptions => {
-          setDestinationSuggestions(destinationOptions);
-          
-          // If we have suggestions and there's no selected destination yet, auto-select the first one
-          if (destinationOptions.length > 0 && !selectedDestination) {
-            handleDestinationSelect(destinationOptions[0]);
-          }
-        });
+    const storedLocation = sessionStorage.getItem('location');
+    if (storedLocation && !startingLocation) {
+      setStartingLocation(storedLocation);
     }
-  }, [startingLocation, tripLength]);
+  }, []);
 
   // Handle refresh button click
   const handleRefresh = () => {
-    fetchVacationSuggestions();
+    const newRefreshCount = refreshCount + 1;
+    setRefreshCount(newRefreshCount);
+    
+    if (newRefreshCount >= 3) {
+      // On third refresh, show premium alert
+      alert("Premium subscription required to see more vacation suggestions.");
+      return;
+    }
+    
+    if (newRefreshCount === 1) {
+      // On first refresh, show second set
+      setCurrentDestinationSet(1);
+      const secondSetSuggestions = allFetchedDestinations.filter(s => s.set === 1);
+      setVacationSuggestions(secondSetSuggestions.slice(0, 4));
+    } else if (newRefreshCount === 2) {
+      // On second refresh, fetch new destinations
+      fetchVacationSuggestions();
+    }
   };
   
-  // Handle destination selection
-  const handleDestinationSelect = (destination) => {
+  // Handle destination selection for custom trip planning
+  const handleDestinationSelect = async (destination) => {
     setSelectedDestination(destination);
     
-    // Create vacay trip object with selected destination details
-    if (destination && startingLocation && tripLength > 0) {
-      const vacayTrip = {
-        origin: startingLocation,
-        destination: destination.name,
-        days: tripLength,
-        distance: destination.distance,
-        coords: destination.coords,
-        startDate: startDate,
-        endDate: endDate
-      };
-      
-      // Store in session storage for the summary page
-      sessionStorage.setItem('vacayTrip', JSON.stringify(vacayTrip));
-      console.log('Stored vacation trip in session storage:', vacayTrip);
-      
-      // Also notify parent component if onDestinationSelect prop exists
-      if (onDestinationSelect && typeof onDestinationSelect === 'function') {
-        onDestinationSelect(destination);
-      }
+    // Calculate trip length if dates are selected
+    let tripDays = 0;
+    if (startDate && endDate) {
+      tripDays = calculateTripDays(startDate, endDate);
     }
   };
 
   // Function to view selected route
-  const viewSelectedRoute = () => {
+  const viewSelectedRoute = async () => {
     if (selectedDestination) {
-      navigate('/summary/vacay');
+      try {
+        // Get coordinates for the origin
+        let originCoords = null;
+        
+        if (startingLocation) {
+          console.log(`Getting coordinates for origin: ${startingLocation}`);
+          
+          // Add Kerala, India to improve geocoding accuracy if not already included
+          const searchQuery = startingLocation.toLowerCase().includes('kerala') ? 
+            startingLocation : 
+            `${startingLocation}, Kerala, India`;
+          
+          const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1`);
+          const data = await response.json();
+          
+          if (data && data.length > 0) {
+            originCoords = {
+              lat: parseFloat(data[0].lat),
+              lng: parseFloat(data[0].lon)
+            };
+            console.log("Retrieved origin coordinates for custom trip:", originCoords);
+            
+            // Validate the coordinates
+            if (isNaN(originCoords.lat) || isNaN(originCoords.lng) ||
+                Math.abs(originCoords.lat) < 0.1 && Math.abs(originCoords.lng) < 0.1) {
+              console.error("Invalid coordinates received from Nominatim");
+              originCoords = null;
+            }
+          }
+        }
+        
+        // If we couldn't get valid coordinates, use a fallback for Kerala
+        if (!originCoords) {
+          console.warn("Using fallback coordinates for Kerala");
+          originCoords = {
+            lat: 10.8505, // Fallback to central Kerala coordinates
+            lng: 76.2711
+          };
+        }
+        
+        // Log for debugging
+        console.log("Final originCoords being stored for custom trip:", originCoords);
+        console.log("Destination coords being stored for custom trip:", {
+          lat: selectedDestination.lat,
+          lng: selectedDestination.lng
+        });
+        
+        // Create package trip object with actual origin coordinates
+        const packageTrip = {
+          origin: startingLocation,
+          destination: selectedDestination.name,
+          startDate: startDate,
+          endDate: endDate,
+          days: tripLength || 2,
+          distance: selectedDestination.distance,
+          originCoords: originCoords,
+          destinationCoords: { // Rename to be consistent with travelpackage.jsx
+            lat: selectedDestination.lat,
+            lng: selectedDestination.lng
+          }
+        };
+        
+        // Store in session storage for the prebuilt page
+        sessionStorage.setItem('packageTrip', JSON.stringify(packageTrip));
+        
+        navigate('/prebuilt');
+      } catch (error) {
+        console.error("Error getting origin coordinates for custom trip:", error);
+        alert("There was an issue getting coordinates for your trip. Please try again.");
+      }
     } else {
       alert('Please select a destination first');
     }
@@ -429,8 +641,43 @@ const SmartVacay = ({ currentMonth, currentYear, holidays, location }) => {
     return diffDays + 1;
   };
 
+  // Effect to load custom destinations when custom trip dates change
+  useEffect(() => {
+    // Skip if incomplete data
+    if (!startDate || !endDate || !startingLocation) {
+      setDestinationSuggestions([]);
+      setSelectedDestination(null);
+      return;
+    }
+
+    // Calculate vacation days
+    const days = calculateTripDays(startDate, endDate);
+    setTripLength(days);
+
+    // Fetch destinations for custom trip based on trip length
+    const fetchCustomDestinations = async () => {
+      console.log(`Fetching custom destinations for ${days} day trip`);
+      const destinations = await fetchVacayDestinations(startingLocation, days);
+      setDestinationSuggestions(destinations);
+      
+      // Auto-select the first destination if none is selected
+      if (destinations.length > 0 && !selectedDestination) {
+        handleDestinationSelect(destinations[0]);
+      }
+    };
+    
+    fetchCustomDestinations();
+  }, [startDate, endDate, startingLocation]);
+
+  // Helper function to classify distance type based on kilometers
+  const getDistanceType = (distance) => {
+    if (distance <= 70) return 'short';
+    if (distance <= 120) return 'medium';
+    return 'long';
+  };
+
   // If location is not available, show search prompt
-  if (!location) {
+  if (!startingLocation) {
     return (
       <div className="no-start-message">
         <h3>Enter your starting location</h3>
@@ -475,7 +722,9 @@ const SmartVacay = ({ currentMonth, currentYear, holidays, location }) => {
               <div className="suggestion-details">
                 <span className="days-count">{suggestion.days} day{suggestion.days !== 1 ? 's' : ''}</span>
                 {suggestion.distance > 0 && (
-                  <span className="distance">{Math.round(suggestion.distance)} km</span>
+                  <span className={`distance distance-${getDistanceType(suggestion.distance)}`}>
+                    {Math.round(suggestion.distance)} km
+                  </span>
                 )}
               </div>
             </div>
@@ -527,12 +776,18 @@ const SmartVacay = ({ currentMonth, currentYear, holidays, location }) => {
               {destinationSuggestions.map((destination, index) => (
                 <div 
                   key={index}
-                  className={`suggestion-card ${selectedDestination?.name === destination.name ? 'selected' : ''}`}
+                  className={`suggestion-card ${selectedDestination?.name === destination.name ? 'selected' : ''} distance-${destination.distanceType}`}
                   onClick={() => handleDestinationSelect(destination)}
                 >
                   <h4>{destination.name}</h4>
-                  <p>{destination.distance} km away</p>
-                  {destination.rating && <p>Rating: {destination.rating} ⭐</p>}
+                  <div className="distance-indicator">
+                    <span className={`distance-badge ${destination.distanceType}`}>
+                      {destination.distanceType === 'short' ? 'Nearby' : 
+                       destination.distanceType === 'medium' ? 'Day Trip' : 'Long Trip'}
+                    </span>
+                    <span>{Math.round(destination.distance)} km</span>
+                  </div>
+                  <p>{destination.description}</p>
                 </div>
               ))}
             </div>

@@ -286,9 +286,11 @@ const HomePage = () => {
   return (
     <div className="home-container">
       <nav className={`navbar ${isScrolled ? 'scrolled' : ''}`}>
-      <div>
-          <button id="name" onClick={() => navigate('/home')}>RouteWeaver</button>
-      </div>
+        <div>
+          <button id="name" onClick={() => navigate('/home')}>
+            RouteWeaver
+          </button>
+        </div>
         <div className="nav-links">
           <a href="/home"><h4>Home</h4></a>
           <FaUserCircle

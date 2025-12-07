@@ -263,13 +263,51 @@ const TravelPackage = () => {
     }
   };
 
-  // Get photo URL from photo reference
-  const getPhotoUrl = (photoRef) => {
-    if (photoRef && import.meta.env.VITE_GOOGLE_PLACES_API_KEY) {
-      return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photoRef}&key=${import.meta.env.VITE_GOOGLE_PLACES_API_KEY}`;
+  // Get photo URL from photo reference or use imageUrl directly
+  const getPhotoUrl = (place) => {
+    // Check if the Google Places API key is available
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    if (!apiKey) {
+      console.warn("Google Maps API key not found in environment variables. Make sure VITE_GOOGLE_MAPS_API_KEY is set in your .env file");
+      return fallbackImage;
     }
+    
+    // If the place has a photo reference, use Google Places API
+    if (place && place.photoRef) {
+      return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${place.photoRef}&key=${apiKey}`;
+    }
+    
+    // Fallback for places with direct imageUrl (if any)
+    if (place && place.imageUrl) {
+      return place.imageUrl;
+    }
+    
+    // Default fallback image
     return fallbackImage;
   };
+
+  // Preload images to ensure they're cached and ready to display
+  useEffect(() => {
+    // Preload images for nearby places
+    if (nearbyPlaces && nearbyPlaces.length > 0) {
+      nearbyPlaces.forEach(place => {
+        if (place.imageUrl) {
+          const img = new Image();
+          img.src = place.imageUrl;
+        }
+      });
+    }
+    
+    // Preload images for distant places
+    if (distantPlaces && distantPlaces.length > 0) {
+      distantPlaces.forEach(place => {
+        if (place.imageUrl) {
+          const img = new Image();
+          img.src = place.imageUrl;
+        }
+      });
+    }
+  }, [nearbyPlaces, distantPlaces]);
 
   // Click handler for document to hide suggestions when clicking outside
   useEffect(() => {
@@ -288,7 +326,32 @@ const TravelPackage = () => {
 
   // Handle Explore button click - stores data to sessionStorage and navigates to summary page
   const handleExploreClick = (place) => {
-    // Store trip data in sessionStorage for the summary page to use
+    // Ensure coordinates are valid
+    if (!userCoords || !userCoords.lat || !userCoords.lng) {
+      console.error("Invalid origin coordinates:", userCoords);
+      alert("Could not determine your location coordinates. Please try searching again.");
+      return;
+    }
+    
+    if (!place.lat || !place.lng) {
+      console.error("Invalid destination coordinates:", place);
+      alert("Destination coordinates are invalid. Please try another destination.");
+      return;
+    }
+    
+    // Log coordinates for debugging
+    console.log("Storing trip data with coordinates:", {
+      origin: {
+        name: searchQuery,
+        coords: userCoords
+      },
+      destination: {
+        name: place.name,
+        coords: { lat: place.lat, lng: place.lng }
+      }
+    });
+    
+    // Store trip data in sessionStorage for the prebuilt route page to use
     sessionStorage.setItem('packageTrip', JSON.stringify({
       origin: searchQuery, // Current location
       destination: place.name,
@@ -297,8 +360,8 @@ const TravelPackage = () => {
       distance: place.distance
     }));
     
-    // Navigate to summary page with special parameter
-    navigate('/summary/packages');
+    // Navigate to prebuilt route page
+    navigate('/prebuilt');
   };
 
   return (
@@ -414,7 +477,7 @@ const TravelPackage = () => {
                     <div 
                       className="card-image" 
                       style={{ 
-                        backgroundImage: `url(${place.photoRef ? getPhotoUrl(place.photoRef) : fallbackImage})`,
+                        backgroundImage: `url(${place.photoRef ? getPhotoUrl(place) : fallbackImage})`,
                         backgroundSize: 'cover',
                         backgroundPosition: 'center'
                       }}
@@ -449,7 +512,7 @@ const TravelPackage = () => {
                     <div 
                       className="card-image" 
                       style={{ 
-                        backgroundImage: `url(${place.photoRef ? getPhotoUrl(place.photoRef) : fallbackImage})`,
+                        backgroundImage: `url(${place.photoRef ? getPhotoUrl(place) : fallbackImage})`,
                         backgroundSize: 'cover',
                         backgroundPosition: 'center'
                       }}

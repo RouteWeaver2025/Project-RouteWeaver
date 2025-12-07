@@ -4,8 +4,8 @@ import { MapContainer, TileLayer, Polyline, useMap, Marker, Popup } from "react-
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "../design/summary.css";
-import { FiRefreshCw } from 'react-icons/fi';
-import { FaUserCircle, FaArrowLeft } from 'react-icons/fa';
+import { FiRefreshCw, FiX } from 'react-icons/fi';
+import { FaUserCircle, FaArrowLeft, FaMapMarkerAlt, FaRoute, FaSave, FaGoogle, FaApple } from 'react-icons/fa';
 import axios from 'axios';
 
 // Icons for markers
@@ -30,8 +30,16 @@ const placeIcon = new L.Icon({
   popupAnchor: [1, -34],
 });
 
-// Add a fallback icon with a different color
-const fallbackIcon = new L.Icon({
+// Define the missing selectedPlaceIcon
+const selectedPlaceIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+});
+
+// Define fallbackPlaceIcon (previously was fallbackIcon but referenced as fallbackPlaceIcon)
+const fallbackPlaceIcon = new L.Icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png',
   iconSize: [25, 41],
   iconAnchor: [12, 41],
@@ -73,14 +81,23 @@ function RoutePolylines({ routeGeometry }) {
       
       // Convert coordinates to Leaflet format and create bounds
       const latLngs = allCoords.map(coord => {
-        // Handle both array format and object format
+        // Handle different coordinate formats
         if (Array.isArray(coord)) {
+          // OSRM format [lon, lat] or our fallback [lat, lng]
+          if (Math.abs(coord[0]) > 90) {
+            // This is likely [lon, lat] format
+            return [coord[1], coord[0]];
+          }
           return [coord[0], coord[1]];
-        } else if (coord.lat && coord.lng) {
-          return [coord.lat, coord.lng];
+        } else if (coord.lat !== undefined && (coord.lng !== undefined || coord.lon !== undefined)) {
+          // Object format with lat/lng or lat/lon
+          return [coord.lat, coord.lng || coord.lon];
         }
         return coord; // Already in correct format
       });
+      
+      // Log the first few coordinates to check format
+      console.log("First few coordinates for polyline:", latLngs.slice(0, 3));
       
       const bounds = L.latLngBounds(latLngs);
       
@@ -96,13 +113,28 @@ function RoutePolylines({ routeGeometry }) {
     return null;
   }
   
+  // Convert to format expected by Leaflet
+  const positions = routeGeometry.map(coord => {
+    if (Array.isArray(coord)) {
+      // Check if this is [lon, lat] format from OSRM or [lat, lng] from our fallback
+      if (Math.abs(coord[0]) > 90) {
+        // This is likely [lon, lat] format from OSRM
+        return [coord[1], coord[0]];
+      }
+      return coord;
+    } else if (coord.lat !== undefined && (coord.lng !== undefined || coord.lon !== undefined)) {
+      return [coord.lat, coord.lng || coord.lon];
+    }
+    return coord;
+  });
+  
   return (
     <Polyline
-      positions={routeGeometry}
+      positions={positions}
       pathOptions={{
         color: "#2196F3",
         weight: 5,
-        opacity: 1,
+        opacity: 0.9,
       }}
     />
   );
@@ -284,7 +316,14 @@ export default function Summary() {
         setLoading(false);
       } catch (error) {
         console.error("Error in fetch routine:", error);
-        setError("Failed to load route details. Please try again.");
+        setError("Failed to load route details, but map is still available. Please try again later.");
+        
+        // Even in case of a complete failure, create a fallback route so there's something to display
+        const fallbackResult = createAndReturnFallbackRoute();
+        if (fallbackResult) {
+          setRoute(fallbackResult);
+        }
+        
         setLoading(false);
       }
     }
@@ -680,24 +719,21 @@ export default function Summary() {
   
   // Create a curved route between two points
   function createCurvedRoute(startLat, startLng, endLat, endLng) {
-    const pointCount = 6; // Number of points including start and end
+    const pointCount = 20; // Number of points including start and end
     
     // Calculate the distance between start and end
     const dLat = endLat - startLat;
     const dLng = endLng - startLng;
     const straightLineDistance = Math.sqrt(dLat * dLat + dLng * dLng);
     
-    // Create a more interesting route by adding some randomness
+    // Create a curve by adding some variance depending on the distance
     // For very short routes, use less curvature
-    const curveFactor = Math.min(0.3, straightLineDistance * 0.1);
+    const curveFactor = Math.min(0.3, straightLineDistance * 0.5);
     
     const geometry = [];
     
-    // Add start point
-    geometry.push([startLat, startLng]);
-    
-    // Add intermediate points
-    for (let i = 1; i < pointCount - 1; i++) {
+    // Add points along a curve
+    for (let i = 0; i < pointCount; i++) {
       const fraction = i / (pointCount - 1);
       
       // Base position on the direct line
@@ -713,15 +749,18 @@ export default function Summary() {
       const perpLng = dLat;
       const perpLength = Math.sqrt(perpLat * perpLat + perpLng * perpLng);
       
-      // Normalize and apply deviation
+      // Normalize and apply deviation (avoid division by zero)
+      if (perpLength > 0) {
       const normPerpLat = perpLat / perpLength * deviation;
       const normPerpLng = perpLng / perpLength * deviation;
       
+        // Add the point with curve deviation
       geometry.push([baseLat + normPerpLat, baseLng + normPerpLng]);
+      } else {
+        // Fallback if perpendicular length is zero
+        geometry.push([baseLat, baseLng]);
+      }
     }
-    
-    // Add end point
-    geometry.push([endLat, endLng]);
     
     return geometry;
   }
@@ -1027,13 +1066,43 @@ export default function Summary() {
     }
   }
   
+  // Helper function to sort places by distance from origin 
+  function sortPlacesByDistanceFromOrigin(places, originCoords) {
+    if (!places || !places.length || !originCoords) return places;
+    
+    console.log("Sorting places by distance from origin:", originCoords);
+    
+    // Calculate distances from origin
+    const placesWithDistances = places.map(place => {
+      const lat = place.lat || place.latitude;
+      const lng = place.lng || place.longitude || place.lon;
+      
+      const distance = calculateDistance(
+        originCoords.lat, 
+        originCoords.lng, 
+        lat, 
+        lng
+      );
+      return { ...place, distanceFromOrigin: distance };
+    });
+    
+    // Sort by distance from origin
+    const sortedPlaces = placesWithDistances
+      .sort((a, b) => a.distanceFromOrigin - b.distanceFromOrigin);
+      
+    console.log("Places sorted by distance:", sortedPlaces.map(p => p.name));
+    
+    return sortedPlaces;
+  }
+  
   // Fetch route geometry
   async function fetchRouteGeometry(origin, destination, places) {
     try {
       // Check that we have valid coordinates for origin and destination
       if (!origin || !destination) {
         console.warn("Missing origin or destination in fetchRouteGeometry");
-        return null;
+        // Create a fallback route instead of returning null
+        return createAndReturnFallbackRoute();
       }
       
       // Convert origin/destination to the format expected by the API
@@ -1048,7 +1117,12 @@ export default function Summary() {
       // Format waypoints (places to visit)
       let waypoints = '';
       if (places && places.length > 0) {
-        waypoints = places
+        const checkedPlaces = places.filter(place => place.checked);
+        if (checkedPlaces.length > 0) {
+          // Sort places by distance from origin for more efficient routing
+          const sortedPlaces = sortPlacesByDistanceFromOrigin(checkedPlaces, originCoords);
+          
+          waypoints = sortedPlaces
           .filter(place => {
             // Ensure place has valid coordinates
             const hasCoords = (place.lat || place.latitude) && (place.lng || place.longitude || place.lon);
@@ -1063,8 +1137,14 @@ export default function Summary() {
             return `${lat},${lng}`;
           })
           .join('|');
+        }
       }
       
+      // Create a direct point-to-point fallback route first, before even trying the API
+      // This ensures we always have something to display even if the API call fails
+      const fallbackRoute = createAndReturnFallbackRoute();
+      
+      try {
       // Construct the URL with waypoints if present
       let url = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/landmarks/osrm?origin=${encodeURIComponent(originCoord)}&destination=${encodeURIComponent(destCoord)}`;
       
@@ -1072,16 +1152,20 @@ export default function Summary() {
         url += `&waypoints=${encodeURIComponent(waypoints)}`;
       }
       
-      console.log(`Fetching route from OSRM API: ${url}`);
-      
-      // Make the API request
-      const response = await fetch(url);
+        console.log(`Attempting to fetch route from OSRM API: ${url}`);
+        
+        // Make the API request with timeout to prevent long waiting
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
       
       // Handle non-200 responses
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error("OSRM API error:", errorData);
-        throw new Error(`OSRM API error: ${response.status} ${response.statusText}`);
+          console.error("OSRM API error:", response.status, response.statusText);
+          console.log("Using fallback route instead");
+          return fallbackRoute;
       }
       
       // Parse the response
@@ -1090,7 +1174,7 @@ export default function Summary() {
       // Validate the route geometry
       if (!data.geometry || !Array.isArray(data.geometry) || data.geometry.length < 2) {
         console.warn("OSRM returned invalid route geometry, using fallback");
-        throw new Error("Invalid route geometry from OSRM");
+          return fallbackRoute;
       }
       
       console.log(`OSRM route received with ${data.geometry.length} points`);
@@ -1101,53 +1185,39 @@ export default function Summary() {
         time: data.duration * 1000, // Convert to milliseconds
         distance: data.distance
       };
+      } catch (apiError) {
+        console.error("OSRM API error:", apiError);
+        return fallbackRoute; // Return the fallback route we created earlier
+      }
     } catch (error) {
       console.error("Error in fetchRouteGeometry:", error);
-      
-      // Create origin and destination coordinates for fallback
-      let originLat, originLng, destLat, destLng;
-      
-      // Extract coordinates from origin and destination
-      if (typeof origin === 'string') {
-        const parts = origin.split(',');
-        if (parts.length >= 2) {
-          originLat = parseFloat(parts[0]);
-          originLng = parseFloat(parts[1]);
-        }
-      } else {
-        originLat = origin.lat;
-        originLng = origin.lng;
-      }
-      
-      if (typeof destination === 'string') {
-        const parts = destination.split(',');
-        if (parts.length >= 2) {
-          destLat = parseFloat(parts[0]);
-          destLng = parseFloat(parts[1]);
-        }
-      } else {
-        destLat = destination.lat;
-        destLng = destination.lng;
-      }
-      
-      // Create a fallback route if we have valid coordinates
-      if (!isNaN(originLat) && !isNaN(originLng) && !isNaN(destLat) && !isNaN(destLng)) {
-        console.log("Creating fallback route with straight line");
-        
-        // Create a straight line route with a few intermediate points
-        const geometry = [];
-        const pointCount = 6; // Number of points including start and end
-        
-        // Calculate the step size
-        const latStep = (destLat - originLat) / (pointCount - 1);
-        const lngStep = (destLng - originLng) / (pointCount - 1);
-        
-        // Generate the points
-        for (let i = 0; i < pointCount; i++) {
-          const lat = originLat + latStep * i;
-          const lng = originLng + lngStep * i;
-          geometry.push([lng, lat]); // Note: OSRM format is [lon, lat]
-        }
+      return createAndReturnFallbackRoute();
+    }
+  }
+  
+  // Helper function to create and return a fallback route
+  function createAndReturnFallbackRoute() {
+    console.log("Creating fallback route with curved line");
+    
+    // Extract coordinates for fallback route
+    let originLat, originLng, destLat, destLng;
+    
+    // Use existing coordinates if available
+    if (originCoords && destCoords) {
+      originLat = originCoords.lat;
+      originLng = originCoords.lng;
+      destLat = destCoords.lat;
+      destLng = destCoords.lng;
+    } else {
+      // Default to central India if no coordinates are available
+      originLat = 20.5937;
+      originLng = 78.9629;
+      destLat = 28.7041;
+      destLng = 77.1025;
+    }
+    
+    // Create a curved route between the points for better visualization
+    const geometry = createCurvedRoute(originLat, originLng, destLat, destLng);
         
         // Calculate approximate distance using Haversine formula
         const R = 6371; // Radius of the Earth in km
@@ -1166,12 +1236,9 @@ export default function Summary() {
         return {
           geometry,
           distance,
-          time: timeInSeconds
+      time: timeInSeconds,
+      isFallback: true
         };
-      }
-      
-      return null;
-    }
   }
   
   // Update place coordinates based on API response
@@ -1430,29 +1497,24 @@ export default function Summary() {
       console.log(`${updated[index].checked ? 'Added' : 'Removed'} place: ${updated[index].name}`);
       
       // When selecting a place, if we have route data, update the route
-      if (updated[index].checked && originCoords && destCoords) {
+      if (originCoords && destCoords) {
         // Schedule an async update to the route (don't block the UI)
         setTimeout(async () => {
           // Get all checked places
           const checkedPlaces = updated.filter(p => p.checked);
           
           if (checkedPlaces.length > 0) {
+            // Sort places by distance from origin for more efficient routing
+            const sortedPlaces = sortPlacesByDistanceFromOrigin(checkedPlaces, originCoords);
+            console.log("Updating route with sorted places:", sortedPlaces.map(p => p.name));
+            
             // Try to update the route with the new waypoints
             try {
-              console.log("Updating route with selected places:", 
-                checkedPlaces.map(p => p.name));
-              
-              // Format waypoints for OSRM
-              const waypoints = checkedPlaces.map(p => ({
-                lat: parseFloat(p.lat || p.location?.lat || 0),
-                lng: parseFloat(p.lon || p.location?.lng || p.lng || 0)
-              }));
-              
               // Fetch updated route
               const routeResult = await fetchRouteGeometry(
                 { lat: originCoords.lat, lng: originCoords.lng },
                 { lat: destCoords.lat, lng: destCoords.lng },
-                waypoints
+                sortedPlaces
               );
               
               if (routeResult) {
@@ -1486,23 +1548,90 @@ export default function Summary() {
   }
   
   // Handle navigate button click
-  const handleNavigateClick = () => {
-    setShowNavOptions(!showNavOptions);
+  const handleNavigateClick = async () => {
+    setShowNavOptions(true);
+    
+    // Fetch cost estimate if not already fetched
+    if (!costEstimate && !isFetchingCost) {
+      setIsFetchingCost(true);
+      
+      try {
+        // First check if we have valid coordinates and origin/destination
+        if (origin && destination) {
+          const costData = await fetchTravelCost(
+            origin, 
+            destination,
+            places,
+            2 // Default to 2 people
+          );
+          
+          setCostEstimate(costData);
+        } else {
+          // Fallback cost estimation based on route data if API fails
+          if (route && route.distance) {
+            // Create a simple cost estimate based on distance
+            const distanceKm = route.distance / 1000;
+            const fuelCost = Math.round(distanceKm * 8); // Rough estimate: ₹8 per km
+            const foodCost = Math.round(distanceKm / 100 * 500); // ₹500 per 100km
+            const totalCost = `₹${fuelCost + foodCost}`;
+            
+            setCostEstimate({
+              totalCost,
+              details: {
+                fuel: `₹${fuelCost}`,
+                food: `₹${foodCost}`
+              }
+            });
+          } else {
+            setCostEstimate({ 
+              totalCost: "Unable to calculate",
+              error: true 
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching cost estimate:", error);
+        
+        // Fallback cost estimation when API call fails
+        if (route && route.distance) {
+          const distanceKm = route.distance / 1000;
+          const estimatedCost = `₹${Math.round(distanceKm * 10)}`; // Simple estimate: ₹10 per km
+          
+          setCostEstimate({
+            totalCost: estimatedCost,
+            note: "Estimated based on distance only"
+          });
+        } else {
+          setCostEstimate({ 
+            totalCost: "Unable to calculate",
+            error: true 
+          });
+        }
+      } finally {
+        setIsFetchingCost(false);
+      }
+    }
   };
 
+  // Handle navigation option selection
   const handleNavOptionSelect = (option) => {
     // Handle navigation option selection
     console.log(`Selected navigation option: ${option}`);
     
-    // First check if we have valid coordinates
-    if (!originCoords || !destCoords) {
-      console.error("Missing coordinates for navigation");
-      alert("Cannot navigate: missing location coordinates. Please try again later.");
+    // First check if we have valid information
+    if (!origin || !destination) {
+      console.error("Missing origin or destination for navigation");
+      alert("Cannot navigate: missing origin or destination. Please try again later.");
       return;
     }
     
     try {
       let checkedPlaces = places.filter(place => place.checked);
+      // Sort places by distance for more efficient routing
+      if (checkedPlaces.length > 0 && originCoords) {
+        checkedPlaces = sortPlacesByDistanceFromOrigin(checkedPlaces, originCoords);
+      }
+      
       let navUrl = '';
       
       switch(option) {
@@ -1517,6 +1646,7 @@ export default function Summary() {
           if (checkedPlaces.length > 0) {
             // Google Maps has a limit of around 10 waypoints
             const limitedWaypoints = checkedPlaces.slice(0, 10);
+            console.log("Selected waypoints for navigation:", limitedWaypoints.map(p => p.name));
             
             limitedWaypoints.forEach(place => {
               // Use the place name which is more reliable than coordinates
@@ -1533,7 +1663,6 @@ export default function Summary() {
           navUrl += '/data=!4m2!4m1!3e0';  // 3e0 = driving mode
           
           break;
-          
           
         case 'apple':
           // Apple Maps URL format
@@ -1561,7 +1690,26 @@ export default function Summary() {
     navigate("/saver");
   };
   
-  const submitCheckedPlaces = async () => {
+  // Handle sign out functionality
+  const handleSignOut = () => {
+    // Remove user data from localStorage and sessionStorage
+    localStorage.removeItem('userEmail');
+    sessionStorage.clear();
+    // Navigate to login page
+    navigate('/');
+  };
+  
+  // Add scroll effect for navbar
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Update the fetchTravelCost function to fix the API endpoint issue and implement fallback
+  async function fetchTravelCost(origin, destination, places, numPeople = 2) {
     try {
       setLoading(true);
       const checkedPlaces = places.filter(place => place.checked);
@@ -1598,7 +1746,12 @@ export default function Summary() {
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify(newRouteData)
+        body: JSON.stringify({
+          origin,
+          destination,
+          placesVisiting: checkedPlaces,
+          numPeople: 2 // Hard-coded to 2 as suggested
+        })
         });
         
         if (!response.ok) {
@@ -1663,57 +1816,41 @@ export default function Summary() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  // Update the map rendering to handle place markers properly
-  // First, define our icons before the return statement - use locally served shadow or no shadow
-  const regularPlaceIcon = useMemo(() => {
-    return new L.Icon({
-      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-      // Remove shadowUrl to prevent content security policy issues
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34]
-    });
-  }, []);
-
-  const selectedPlaceIcon = useMemo(() => {
-    return new L.Icon({
-      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-      // Remove shadowUrl to prevent content security policy issues
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34]
-    });
-  }, []);
-
-  const fallbackPlaceIcon = useMemo(() => {
-    return new L.Icon({
-      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
-      // Remove shadowUrl to prevent content security policy issues
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34]
-    });
-  }, []);
-
-  // Handle sign out functionality
-  const handleSignOut = () => {
-    // Remove user data from localStorage and sessionStorage
-    localStorage.removeItem('userEmail');
-    sessionStorage.clear();
-    // Navigate to login page
-    navigate('/');
-  };
-  
-  // Add scroll effect for navbar
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  // Add this function to fetch places from Google Maps API as a backup
+  async function fetchPlaceCoordinatesFromGoogle(placeName) {
+    try {
+      if (!placeName) return null;
+      
+      // Try to get coordinates from Nominatim first (avoid API costs)
+      const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(placeName)}&limit=1`;
+      const nominatimResponse = await fetch(nominatimUrl);
+      
+      if (nominatimResponse.ok) {
+        const data = await nominatimResponse.json();
+        if (data && data.length > 0) {
+          return {
+            name: placeName,
+            lat: parseFloat(data[0].lat),
+            lng: parseFloat(data[0].lon)
+          };
+        }
+      }
+      
+      // If no results from Nominatim, try a simple geocoding approach
+      // This is a fallback that doesn't require API keys but is less accurate
+      // In a production app, you would use Google Maps, Mapbox, or other geocoding API with keys
+      
+      // For now, create an approximate location based on pattern matching
+      // with some common locations in India
+      return tryFallbackGeocoding(placeName);
+      
+    } catch (error) {
+      console.error(`Error fetching coordinates for ${placeName}:`, error);
+      return null;
+    }
+  }
 
   return (
     <div className="summary-container">
@@ -1744,23 +1881,184 @@ export default function Summary() {
           <div className="route-header">
             <h3>Route Summary</h3>
           </div>
+          {loading ? (
           <div className="loading-message">
             <p>Loading route data...</p>
           </div>
+          ) : error ? (
+            <div className="error-message">
+              <p>{error}</p>
         </div>
+          ) : (
+            <>
+              <div className="route-info">
+                <div className="route-stats">
+                  <p><strong>Distance:</strong> {route?.distance ? `${(route.distance / 1000).toFixed(1)} km` : 'N/A'}</p>
+                  <p><strong>Estimated time:</strong> {route?.time ? `${Math.floor(route.time / 3600)} hr ${Math.floor((route.time % 3600) / 60)} min` : 'N/A'}</p>
+                </div>
+              </div>
+              
+              <div className="places-header">
+                <h4>Places along the route</h4>
+                <span>{places.filter(p => p.checked).length} selected</span>
+              </div>
+              
+              <div className="place-list">
+                {places.length > 0 ? (
+                  places.map((place, index) => (
+                    <div 
+                      key={place.id || `place-${index}`} 
+                      className="place-item"
+                      onMouseEnter={() => setHoveredPlace(place)}
+                      onMouseLeave={() => setHoveredPlace(null)}
+                    >
+                      <div className="place-name">{place.name}</div>
+                      <input 
+                        type="checkbox" 
+                        checked={place.checked || false}
+                        onChange={() => togglePlace(index)}
+                      />
+                    </div>
+                  ))
+                ) : (
+                  <p>No places found along this route.</p>
+                )}
+              </div>
+              
+              <div className="bottom-buttons">
+                <button id="navigate-btn" onClick={handleNavigateClick}>
+                  <FaRoute /> Navigate
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+        
         <div className="map-area">
-          {/* Fallback map while loading */}
-          <MapContainer
-            center={[20.5937, 78.9629]} // India center
-            zoom={4}
-            style={{ height: "100%", width: "100%" }}
-          >
-            <TileLayer
-              attribution='&copy; OpenStreetMap contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-          </MapContainer>
+          {loading ? (
+            <div className="loading-message">
+              <p>Loading route data...</p>
+            </div>
+          ) : (
+            <MapContainer
+              center={originCoords ? [originCoords.lat, originCoords.lng] : [20.5937, 78.9629]}
+              zoom={originCoords && destCoords ? 8 : 4}
+              style={{ height: "100%", width: "100%" }}
+              className="map-container"
+            >
+              <TileLayer
+                attribution='&copy; OpenStreetMap contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              
+              {/* Origin marker */}
+              {originCoords && (
+                <Marker position={[originCoords.lat, originCoords.lng]} icon={originIcon}>
+                  <Popup>{origin}</Popup>
+                </Marker>
+              )}
+              
+              {/* Destination marker */}
+              {destCoords && (
+                <Marker position={[destCoords.lat, destCoords.lng]} icon={destinationIcon}>
+                  <Popup>{destination}</Popup>
+                </Marker>
+              )}
+              
+              {/* Place markers */}
+              {places.map((place, index) => (
+                <Marker 
+                  key={`marker-${place.id || index}`}
+                  position={[place.lat, place.lng || place.lon || place.longitude]}
+                  icon={place.checked ? selectedPlaceIcon : place.isFallback ? fallbackPlaceIcon : placeIcon}
+                >
+                  <Popup>
+                    <div className="place-popup">
+                      <h3>{place.name}</h3>
+                      {place.vicinity && <p>{place.vicinity}</p>}
+                      {place.rating && <p>Rating: {place.rating}</p>}
+                      <button 
+                        className={`place-toggle-btn ${place.checked ? 'selected' : ''}`}
+                        onClick={() => togglePlace(index)}
+                      >
+                        {place.checked ? 'Remove from route' : 'Add to route'}
+                      </button>
         </div>
+                  </Popup>
+                </Marker>
+              ))}
+              
+              {/* Route polyline */}
+              {route && route.geometry && route.geometry.length > 1 && (
+                <RoutePolylines routeGeometry={route.geometry} />
+              )}
+            </MapContainer>
+          )}
+          
+          {/* Hovered place info */}
+          {hoveredPlace && (
+            <div className="hoverbox">
+              <div className="hoverbox-info">
+                <div className="hoverbox-name">{hoveredPlace.name}</div>
+                {hoveredPlace.vicinity && <p>{hoveredPlace.vicinity}</p>}
+                {hoveredPlace.rating && <p>Rating: {hoveredPlace.rating}</p>}
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {/* Navigation options dialog */}
+        {showNavOptions && (
+          <div className="nav-options">
+            <button className="nav-options-close" onClick={() => setShowNavOptions(false)}>
+              <FiX />
+            </button>
+            <div className="nav-options-header">Choose Navigation App</div>
+            
+            {/* Cost estimate section */}
+            <div className="cost-estimate">
+              <p>Approximate Cost</p>
+              {isFetchingCost ? (
+                <p>Calculating...</p>
+              ) : costEstimate ? (
+                <div className="cost-value">
+                  {costEstimate.error ? 'Unable to calculate' : costEstimate.totalCost}
+                  {costEstimate.note && <p className="cost-note">{costEstimate.note}</p>}
+                </div>
+              ) : (
+                <p>Not available</p>
+              )}
+            </div>
+            
+            {/* Show error if we have invalid data */}
+            {(!origin || !destination) ? (
+              <div className="nav-error">
+                <p>Cannot start navigation: missing origin or destination</p>
+                <button 
+                  className="retry-btn"
+                  onClick={() => window.location.reload()}
+                >
+                  Reload Page
+                </button>
+              </div>
+            ) : (
+              <>
+                <button 
+                  className="google-maps-btn"
+                  onClick={() => handleNavOptionSelect('google')}
+                >
+                  <FaGoogle /> Google Maps
+                </button>
+                <button 
+                  className="apple-maps-btn"
+                  onClick={() => handleNavOptionSelect('apple')}
+                >
+                  <FaApple /> Apple Maps
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
